@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bundled React App - Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    .info {
+      background: #fff3cd;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #ffc107;
+      margin: 20px 0;
+    }
+    pre {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bundled React App Simulation</h1>
+    <p>This page simulates how environment variables appear in a real production React build.</p>
+    
+    <div class="info">
+      <strong>⚠️ Important:</strong> This page contains minified/bundled JavaScript code similar to what Create React App produces. The extension should now be able to detect environment variables from this bundled code.
+    </div>
+    
+    <h2>Simulated Bundle Patterns:</h2>
+    <pre>
+Example 1: Webpack DefinePlugin pattern
+  e.REACT_APP_API_URL="https://api.production.com"
+
+Example 2: Object literal pattern
+  {REACT_APP_AUTH_DOMAIN:"auth.production.com"}
+
+Example 3: Minified pattern
+  "REACT_APP_VERSION":"2.5.1"
+
+Example 4: NODE_ENV inline
+  "production"
+    </pre>
+  </div>
+
+  <!-- Simulated main bundle (inline) -->
+  <script>
+    // This simulates what Webpack's DefinePlugin creates
+    (function() {
+      var e = {};
+      e.REACT_APP_API_URL = "https://api.production.com";
+      e.REACT_APP_AUTH_DOMAIN = "auth.production.com";
+      e.REACT_APP_GRAPHQL_ENDPOINT = "https://graphql.production.com/v1";
+      e.NODE_ENV = "production";
+      e.PUBLIC_URL = "/app";
+      
+      // Simulate config object pattern
+      var config = {
+        REACT_APP_VERSION: "2.5.1",
+        REACT_APP_BUILD_ID: "abc123def456",
+        REACT_APP_SENTRY_DSN: "https://abc@sentry.io/123",
+        REACT_APP_ANALYTICS_ID: "UA-12345678-1"
+      };
+      
+      // Simulate minified code with embedded strings
+      var apiConfig = {
+        baseUrl: "https://api.production.com",
+        wsUrl: "wss://ws.production.com",
+        timeout: 30000
+      };
+      
+      console.log("Simulated React app loaded with environment:", e.NODE_ENV);
+    })();
+  </script>
+  
+  <!-- Simulated chunk bundle -->
+  <script>
+    // More minified patterns
+    !function(){
+      var t="production",
+          n={REACT_APP_FEATURE_FLAGS:'{"newDashboard":true,"betaFeatures":false}'},
+          r="REACT_APP_STRIPE_KEY",
+          i="pk_live_abc123def456xyz";
+      
+      // Some apps use this pattern
+      "REACT_APP_STRIPE_KEY":"pk_live_abc123def456xyz",
+      "REACT_APP_AWS_REGION":"us-east-1",
+      "REACT_APP_COGNITO_POOL":"us-east-1_AbCdEfGhI"
+    }();
+  </script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite App - Environment Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #646cff;
+      margin-bottom: 10px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #e0e7ff;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #646cff;
+      margin: 20px 0;
+    }
+    pre {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">⚡</div>
+    <h1>Vite App Test Page</h1>
+    <p>This page simulates a Vite application with environment variables.</p>
+    
+    <div class="info">
+      <strong>⚡ Vite Pattern:</strong> Vite replaces <code>import.meta.env.VITE_*</code> variables at build time.
+    </div>
+    
+    <h2>Expected Variables:</h2>
+    <pre>
+VITE_API_URL: https://api.vite-app.com
+VITE_APP_TITLE: My Vite App
+VITE_ENABLE_ANALYTICS: true
+VITE_WS_URL: wss://ws.vite-app.com
+MODE: production
+    </pre>
+  </div>
+
+  <!-- Simulated Vite bundle -->
+  <script type="module">
+    // Vite replaces import.meta.env at build time
+    // This simulates the compiled output
+    
+    const env_VITE_API_URL = "https://api.vite-app.com";
+    const env_VITE_APP_TITLE = "My Vite App";
+    const env_VITE_ENABLE_ANALYTICS = "true";
+    const env_VITE_WS_URL = "wss://ws.vite-app.com";
+    const env_VITE_SENTRY_DSN = "https://abc123@o123456.ingest.sentry.io/123456";
+    
+    const config = {
+      VITE_API_URL: "https://api.vite-app.com",
+      VITE_GRAPHQL_ENDPOINT: "https://graphql.vite-app.com/v1",
+      mode: "production"
+    };
+    
+    // Vite's mode variable
+    const MODE = "production";
+    
+    // Simulated app initialization
+    const app = {
+      apiUrl: "https://api.vite-app.com",
+      wsUrl: "wss://ws.vite-app.com",
+      title: "My Vite App"
+    };
+    
+    console.log("Vite app loaded in mode:", MODE);
+  </script>
+  
+  <!-- Simulated minified Vite chunk -->
+  <script type="module">
+    !function(){
+      const e={
+        VITE_AUTH_DOMAIN:"auth.vite-app.com",
+        VITE_STRIPE_KEY:"pk_test_abc123",
+        VITE_AWS_REGION:"us-east-1"
+      };
+      
+      "VITE_FEATURE_FLAGS":'{"darkMode":true,"newEditor":false}';
+    }();
+  </script>
+</body>
+</html>

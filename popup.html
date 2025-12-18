@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Environment Viewer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Environment Variables</h1>
+      <button id="refreshBtn" title="Refresh">🔄</button>
+    </header>
+    
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Scanning for environment variables...</p>
+    </div>
+    
+    <div id="content" class="content hidden">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search variables...">
+      </div>
+      
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="react">REACT_APP_*</button>
+        <button class="filter-btn" data-filter="vite">VITE_*</button>
+        <button class="filter-btn" data-filter="next">NEXT_PUBLIC_*</button>
+        <button class="filter-btn" data-filter="vue">VUE_APP_*</button>
+        <button class="filter-btn" data-filter="node">NODE_ENV</button>
+      </div>
+      
+      <div id="envVars" class="env-vars"></div>
+      
+      <div id="noVars" class="no-vars hidden">
+        <p>No environment variables detected.</p>
+        <small>This extension looks for variables from React, Vite, Next.js, Vue, Nuxt, and other frameworks.</small>
+      </div>
+    </div>
+    
+    <div id="error" class="error hidden">
+      <p>Unable to access page content. Make sure you're on a valid webpage.</p>
+    </div>
+    
+    <footer>
+      <button id="copyBtn" class="btn-copy">Copy All</button>
+      <button id="exportBtn" class="btn-export">Export JSON</button>
+    </footer>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
