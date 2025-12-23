@@ -1,4 +1,4 @@
-# Privacy Policy for EnvVars Chrome Extension
+The scripting permission is required to inject a content script into the active tab to access the page's window object and DOM. This script reads publicly-exposed environment variables from framework-specific objects (like window.__NEXT_DATA__, window.__NUXT__, window.env) and parses inline scripts for bundled environment variable patterns. The script only reads data and makes no modifications to the page.# Privacy Policy for EnvVars Chrome Extension
 
 **Last Updated: December 23, 2025**
 

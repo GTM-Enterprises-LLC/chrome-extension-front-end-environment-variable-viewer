@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - EnvVars Chrome Extension</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/main/icon128.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4F46E5;
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --text: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        main {
+            padding: 60px 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+
+        .last-updated {
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 40px;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-muted);
+        }
+
+        ul {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        li {
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-card);
+            color: var(--text);
+        }
+
+        td {
+            color: var(--text-muted);
+        }
+
+        .not-collected {
+            color: #EF4444;
+        }
+
+        a {
+            color: var(--primary);
+        }
+
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .copyright {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <img src="https://raw.githubusercontent.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/main/icon128.png" alt="EnvVars">
+                    EnvVars
+                </a>
+                <a href="index.html" class="back-link">← Back to Home</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h1>Privacy Policy</h1>
+            <p class="last-updated">Last Updated: December 23, 2025</p>
+
+            <h2>Overview</h2>
+            <p>EnvVars ("the Extension") is a browser extension developed by GTM Enterprises LLC that helps developers view environment variables from frontend JavaScript frameworks. This privacy policy explains how the Extension handles user data.</p>
+
+            <h2>Data Collection</h2>
+            
+            <h3>What We Collect</h3>
+            <p>The Extension reads the following data from web pages you visit <strong>only when you click the extension icon</strong>:</p>
+            <ul>
+                <li><strong>JavaScript environment variables</strong> exposed by frontend frameworks (React, Vite, Next.js, Vue, Nuxt, Gatsby, etc.)</li>
+                <li><strong>Script content</strong> on the active page to detect bundled environment variable patterns</li>
+                <li><strong>Framework-specific configuration objects</strong> (e.g., <code>window.__NEXT_DATA__</code>, <code>window.__NUXT__</code>)</li>
+            </ul>
+
+            <h3>What We Do NOT Collect</h3>
+            <ul>
+                <li class="not-collected">❌ Personal information (name, email, address)</li>
+                <li class="not-collected">❌ Browsing history or web activity</li>
+                <li class="not-collected">❌ Passwords or authentication credentials</li>
+                <li class="not-collected">❌ Financial or payment information</li>
+                <li class="not-collected">❌ Location data</li>
+                <li class="not-collected">❌ Health information</li>
+                <li class="not-collected">❌ Any data from pages you don't explicitly activate the extension on</li>
+            </ul>
+
+            <h2>Data Storage</h2>
+            <ul>
+                <li><strong>No data is stored</strong> by the Extension</li>
+                <li><strong>No data is transmitted</strong> to external servers</li>
+                <li>All processing happens locally in your browser</li>
+                <li>Environment variable data is displayed only in the extension popup and is discarded when the popup closes</li>
+            </ul>
+
+            <h2>Data Sharing</h2>
+            <p>We do not sell, trade, or transfer any user data to third parties. The Extension operates entirely offline and locally.</p>
+
+            <h2>Permissions Explained</h2>
+            <table>
+                <tr>
+                    <th>Permission</th>
+                    <th>Why It's Needed</th>
+                </tr>
+                <tr>
+                    <td><code>activeTab</code></td>
+                    <td>To access the current page when you click the extension icon</td>
+                </tr>
+                <tr>
+                    <td><code>scripting</code></td>
+                    <td>To inject a content script that reads environment variables from the page</td>
+                </tr>
+                <tr>
+                    <td><code>&lt;all_urls&gt;</code></td>
+                    <td>To work on any website where developers need to inspect environment variables</td>
+                </tr>
+            </table>
+
+            <h2>Third-Party Services</h2>
+            <p>The Extension does not integrate with any third-party analytics, advertising, or tracking services.</p>
+
+            <h2>Open Source</h2>
+            <p>This extension is open source. You can review the complete source code at:<br>
+            <a href="https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer" target="_blank">https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer</a></p>
+
+            <h2>Changes to This Policy</h2>
+            <p>We may update this privacy policy from time to time. Changes will be posted to this page with an updated revision date.</p>
+
+            <h2>Contact</h2>
+            <p>If you have questions about this privacy policy or the Extension's data practices, please:</p>
+            <ul>
+                <li><strong>Open an issue</strong> on our <a href="https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues" target="_blank">GitHub repository</a></li>
+            </ul>
+
+            <h2>Consent</h2>
+            <p>By using the EnvVars Chrome Extension, you consent to this privacy policy.</p>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p class="copyright">© 2025 GTM Enterprises LLC. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
