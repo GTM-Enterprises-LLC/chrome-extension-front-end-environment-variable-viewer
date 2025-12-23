@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Environment Variable Viewer",
+  "name": "EnvVars",
   "version": "2.0.0",
   "description": "View environment variables from React, Vite, Next.js, Vue, Nuxt, and other frontend frameworks",
   "permissions": [
