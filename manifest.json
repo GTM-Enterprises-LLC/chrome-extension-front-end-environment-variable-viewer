@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EnvVars",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "View environment variables from React, Vite, Next.js, Vue, Nuxt, and other frontend frameworks",
   "permissions": [
     "activeTab",
