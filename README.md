@@ -260,6 +260,14 @@ MIT License - Feel free to use and modify as needed.
 
 ## Version History
 
+- **2.1.0** (Docker Testing & Infrastructure)
+  - 🐳 Added Docker support for all test applications
+  - Created docker-compose.yml for easy testing setup
+  - Added Dockerfiles for dev and prod modes
+  - Test all frameworks in both development and production builds
+  - Added comprehensive testing documentation
+  - Helper scripts for running Docker containers
+  
 - **2.0.0** (Multi-Framework Release)
   - 🎉 Added support for Vite, Next.js, Vue, Nuxt, Gatsby, and more
   - Added framework-specific detection patterns
