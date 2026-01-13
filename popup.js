@@ -264,16 +264,14 @@ function extractEnvVars() {
       }
     }
     
-    // Pattern 10: Direct NODE_ENV detection (all frameworks use this)
-    const nodeEnvMatch = content.match(/["'](?:production|development|test)["']/);
+    // Pattern 10: Direct NODE_ENV detection - STRICT matching only
+    // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
+    const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
     if (nodeEnvMatch && !envVars.NODE_ENV) {
-      const env = nodeEnvMatch[0].replace(/["']/g, '');
-      if (env === 'production' || env === 'development' || env === 'test') {
-        envVars.NODE_ENV = {
-          value: env,
-          source: 'bundled script (detected)'
-        };
-      }
+      envVars.NODE_ENV = {
+        value: nodeEnvMatch[1],
+        source: 'bundled script (detected)'
+      };
     }
     
     // Pattern 11: Vite's mode detection
@@ -352,6 +350,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('searchInput').addEventListener('input', handleSearch);
   document.getElementById('copyBtn').addEventListener('click', copyAllVariables);
   document.getElementById('exportBtn').addEventListener('click', exportToJson);
+  document.getElementById('exportEnvBtn').addEventListener('click', exportToEnv);
+
+  // Event delegation for copy value buttons
+  document.getElementById('envVars').addEventListener('click', (e) => {
+    if (e.target.classList.contains('copy-value-btn')) {
+      const value = e.target.getAttribute('data-value');
+      navigator.clipboard.writeText(value).then(() => {
+        const originalText = e.target.textContent;
+        e.target.textContent = '✓';
+        setTimeout(() => {
+          e.target.textContent = originalText;
+        }, 1000);
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+      });
+    }
+  });
   
   // Filter buttons
   document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -380,22 +395,51 @@ async function loadEnvironmentVariables() {
       allEnvVars = results[0].result;
     }
     
-    // Second, get all external script URLs and fetch them
+    // Second, get all external script URLs and fetch them (including ES6 modules)
     const scriptUrlsResult = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
+        const urls = new Set();
+
+        // Get regular script tags
         const scripts = Array.from(document.querySelectorAll('script[src]'));
-        return scripts.map(script => {
+        scripts.forEach(script => {
           const src = script.src;
-          // Only return scripts from the same origin or with full URLs
           if (src && (src.startsWith('http') || src.startsWith('/'))) {
-            return src;
+            urls.add(src);
           }
-          return null;
-        }).filter(Boolean);
+        });
+
+        // Get ES6 module imports from type="module" scripts
+        const moduleScripts = Array.from(document.querySelectorAll('script[type="module"]'));
+        moduleScripts.forEach(script => {
+          if (script.src) {
+            urls.add(script.src);
+          }
+          // Parse inline module scripts for imports
+          if (script.textContent) {
+            const importMatches = script.textContent.matchAll(/import\s+.*?from\s+['"](.*?)['"]/g);
+            for (const match of importMatches) {
+              if (match[1]) {
+                // Convert relative URLs to absolute
+                try {
+                  const url = new URL(match[1], window.location.href);
+                  urls.add(url.href);
+                } catch (e) {
+                  // If URL construction fails, try as-is
+                  if (match[1].startsWith('/')) {
+                    urls.add(match[1]);
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        return Array.from(urls);
       }
     });
-    
+
     const scriptUrls = scriptUrlsResult[0]?.result || [];
     
     // Fetch and parse external scripts
@@ -533,13 +577,11 @@ function parseScriptForEnvVars(content, source) {
     }
   }
   
-  // Pattern 10: Direct NODE_ENV detection
-  const nodeEnvMatch = content.match(/["'](?:production|development|test)["']/);
+  // Pattern 10: Direct NODE_ENV detection - STRICT matching only
+  // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
+  const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
   if (nodeEnvMatch && !envVars.NODE_ENV) {
-    const env = nodeEnvMatch[0].replace(/["']/g, '');
-    if (env === 'production' || env === 'development' || env === 'test') {
-      envVars.NODE_ENV = { value: env, source: source + ' (detected)' };
-    }
+    envVars.NODE_ENV = { value: nodeEnvMatch[1], source: source + ' (detected)' };
   }
   
   // Pattern 11: Vite mode
@@ -547,7 +589,293 @@ function parseScriptForEnvVars(content, source) {
   if (viteModeMatch && !envVars.MODE) {
     envVars.MODE = { value: viteModeMatch[1], source: source + ' (Vite mode)' };
   }
-  
+
+  // Pattern 12: Vite's inline import.meta.env object definition
+  // Matches: import.meta.env = {"VITE_API_URL": "https://api.example.com", ...}
+  const viteEnvObjMatch = content.match(/import\.meta\.env\s*=\s*(\{[^}]+\})/);
+  if (viteEnvObjMatch) {
+    try {
+      // Extract key-value pairs from the object
+      const objContent = viteEnvObjMatch[1];
+      const viteEnvPattern = /"([^"]+)":\s*"([^"]+)"/g;
+      for (const match of objContent.matchAll(viteEnvPattern)) {
+        const key = match[1];
+        const value = match[2];
+        if (key.startsWith('VITE_') && !envVars[key]) {
+          envVars[key] = { value, source: source + ' (import.meta.env)' };
+        }
+      }
+    } catch (e) {
+      // If parsing fails, continue
+    }
+  }
+
+  // Pattern 13: React/Vite friendly name patterns in arrays or objects
+  // Matches: [{key:"API Base URL",value:"https://..."}, ...] OR {"API URL":"https://..."}
+  // Look for key-value object patterns (works for both inline and const declarations)
+  const keyValueObjPattern = /\{[^{}]{0,200}key\s*:\s*["']([^"']+)["'][^{}]{0,200}value\s*:\s*["']([^"']+)["'][^{}]{0,200}\}/g;
+  for (const match of content.matchAll(keyValueObjPattern)) {
+    const friendlyName = match[1];
+    const value = match[2];
+
+    // Only process if value looks like an env value
+    const looksLikeEnvValue =
+      value.startsWith('http://') ||
+      value.startsWith('https://') ||
+      value.match(/^[A-Za-z0-9_.-]{10,}$/) ||
+      value === 'true' || value === 'false' ||
+      value.match(/^\d+$/) ||
+      value.includes('.com') ||
+      value.includes('firebase') ||
+      value.includes('sentry');
+
+    if (looksLikeEnvValue) {
+      // Try to map friendly names back to env variable names
+      const envKeyMap = {
+        'API Base URL': 'REACT_APP_API_BASE_URL',
+        'Firebase API Key': 'REACT_APP_FIREBASE_API_KEY',
+        'Project ID': 'REACT_APP_FIREBASE_PROJECT_ID',
+        'Auth Domain': 'REACT_APP_AUTH_DOMAIN',
+        'Enable Logging': 'REACT_APP_ENABLE_LOGGING',
+        'Version': 'REACT_APP_VERSION',
+        'Build Number': 'REACT_APP_BUILD_NUMBER',
+        'Environment': 'REACT_APP_ENVIRONMENT',
+        'Sentry DSN': 'REACT_APP_SENTRY_DSN',
+        'API URL': 'VITE_API_URL',
+        'API Key': 'VITE_API_KEY',
+        'Analytics': 'VITE_FEATURE_FLAG_ANALYTICS',
+        'Dark Mode': 'VITE_FEATURE_FLAG_DARK_MODE',
+        'Max Upload': 'VITE_MAX_UPLOAD_SIZE',
+        'Stripe Key': 'VITE_STRIPE_PUBLIC_KEY',
+        'API Endpoint': 'NEXT_PUBLIC_API_ENDPOINT',
+        'Analytics ID': 'NEXT_PUBLIC_GOOGLE_ANALYTICS_ID',
+        'Stripe Publishable Key': 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+        'Beta Features': 'NEXT_PUBLIC_ENABLE_BETA_FEATURES',
+        'App Name': 'NEXT_PUBLIC_APP_NAME',
+        'Max File Size': 'NEXT_PUBLIC_MAX_FILE_SIZE',
+        'Support Email': 'NEXT_PUBLIC_SUPPORT_EMAIL',
+        'CDN URL': 'NEXT_PUBLIC_CDN_URL',
+      };
+
+      const envKey = envKeyMap[friendlyName] || `DETECTED_${friendlyName.toUpperCase().replace(/\s+/g, '_')}`;
+      if (!envVars[envKey]) {
+        envVars[envKey] = { value, source: source + ' (key-value pair)' };
+      }
+    }
+  }
+
+  // Pattern 14: Minified object literal with API URLs and keys
+  // Matches patterns like: n={"API URL":"https://api.example.com",Analytics:"true"...}
+  const minifiedObjPattern = /[a-z]\s*=\s*\{([^}]{50,1000})\}/g;
+  for (const match of content.matchAll(minifiedObjPattern)) {
+    const objContent = match[1];
+    // Look for key-value pairs with quoted OR unquoted keys
+    const allPairs = [];
+
+    // Pattern 1: "key":"value" or "key":value (quoted key, any value)
+    const quotedKeyPattern = /"([^"]+)"\s*:\s*"?([^,"}\s]+)"?/g;
+    for (const kvMatch of objContent.matchAll(quotedKeyPattern)) {
+      allPairs.push({ key: kvMatch[1], value: kvMatch[2].replace(/^"|"$/g, '') });
+    }
+
+    // Pattern 2: key:"value" or key:value (unquoted key, any value)
+    const unquotedKeyPattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*:\s*"?([^,"}\s]+)"?/g;
+    for (const kvMatch of objContent.matchAll(unquotedKeyPattern)) {
+      const key = kvMatch[1];
+      const value = kvMatch[2].replace(/^"|"$/g, '');
+      // Only add if not already found with quoted key pattern
+      if (!allPairs.find(p => p.key === key)) {
+        allPairs.push({ key, value });
+      }
+    }
+
+    let envLikeCount = 0;
+    const foundPairs = [];
+
+    for (const pair of allPairs) {
+      const key = pair.key;
+      const value = pair.value;
+
+      // Check if this looks like an env var value
+      const looksLikeEnvValue =
+        value.startsWith('http://') ||
+        value.startsWith('https://') ||
+        value.match(/^[A-Za-z0-9_-]{10,}$/i) || // API keys (loosened from 20 to 10 chars)
+        value.match(/^pk_|^sk_|^AI|^G-|^AC/) || // Stripe, Google, Twilio API keys
+        value.includes('example.com') ||
+        value.includes('.com') ||
+        value.includes('api.') ||
+        value.includes('firebase') ||
+        value.includes('sentry') ||
+        value === 'true' || value === 'false' ||
+        value.match(/^\d{5,}$/) || // Large numbers (file sizes, etc)
+        value.includes('@');
+
+      // Check if key looks like an env-related name
+      const isEnvLikeKey =
+        key.startsWith('API ') ||
+        key.startsWith('VITE_') ||
+        key.startsWith('REACT_APP_') ||
+        key.startsWith('NEXT_PUBLIC_') ||
+        key.includes('URL') ||
+        key.includes('Key') ||
+        key.includes('API') ||
+        key.includes('Analytics') ||
+        key.includes('Mode') ||
+        key.includes('Version') ||
+        key.includes('Environment') ||
+        key.includes('Upload');
+
+      if (looksLikeEnvValue && isEnvLikeKey) {
+        envLikeCount++;
+        foundPairs.push({ key, value });
+      }
+    }
+
+    // If we found multiple env-like pairs in one object, it's likely an env config
+    if (envLikeCount >= 2) {
+      for (const pair of foundPairs) {
+        // Try to map to standard env var names
+        const envKeyMap = {
+          'API URL': 'VITE_API_URL',
+          'API Key': 'VITE_API_KEY',
+          'Analytics': 'VITE_FEATURE_FLAG_ANALYTICS',
+          'Dark Mode': 'VITE_FEATURE_FLAG_DARK_MODE',
+          'Version': 'VITE_APP_VERSION',
+          'Environment': 'VITE_ENVIRONMENT',
+          'Max Upload': 'VITE_MAX_UPLOAD_SIZE',
+          'Stripe Key': 'VITE_STRIPE_PUBLIC_KEY',
+          'API Endpoint': 'NEXT_PUBLIC_API_ENDPOINT',
+          'Analytics ID': 'NEXT_PUBLIC_GOOGLE_ANALYTICS_ID',
+          'Stripe Publishable Key': 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+          'Stripe Key': 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',  // Alternate name
+          'Beta Features': 'NEXT_PUBLIC_ENABLE_BETA_FEATURES',
+          'App Name': 'NEXT_PUBLIC_APP_NAME',
+          'Max File Size': 'NEXT_PUBLIC_MAX_FILE_SIZE',
+          'Support Email': 'NEXT_PUBLIC_SUPPORT_EMAIL',
+          'CDN URL': 'NEXT_PUBLIC_CDN_URL',
+        };
+
+        const envKey = envKeyMap[pair.key] || pair.key;
+        if (!envVars[envKey]) {
+          envVars[envKey] = { value: pair.value, source: source + ' (minified object)' };
+        }
+      }
+    }
+  }
+
+  // Pattern 15: name-value pairs (used in security/credential displays)
+  // Matches: {name:"AWS_ACCESS_KEY_ID",value:"AKIAIOSFODNN7EXAMPLE"...}
+  const nameValuePattern = /\{[^}]*name\s*:\s*["']([^"']+)["'][^}]*value\s*:\s*["']([^"']+)["'][^}]*\}/g;
+  for (const match of content.matchAll(nameValuePattern)) {
+    const name = match[1];
+    const value = match[2];
+
+    // Map common credential names to VITE_ format
+    const credentialMap = {
+      'AWS_ACCESS_KEY_ID': 'VITE_AWS_ACCESS_KEY_ID',
+      'AWS_SECRET_ACCESS_KEY': 'VITE_AWS_SECRET_ACCESS_KEY',
+      'AWS_SESSION_TOKEN': 'VITE_AWS_SESSION_TOKEN',
+      'AWS_DEFAULT_REGION': 'VITE_AWS_DEFAULT_REGION',
+      'AZURE_CLIENT_ID': 'VITE_AZURE_CLIENT_ID',
+      'AZURE_CLIENT_SECRET': 'VITE_AZURE_CLIENT_SECRET',
+      'AZURE_TENANT_ID': 'VITE_AZURE_TENANT_ID',
+      'AZURE_SUBSCRIPTION_ID': 'VITE_AZURE_SUBSCRIPTION_ID',
+      'GOOGLE_APPLICATION_CREDENTIALS': 'VITE_GOOGLE_APPLICATION_CREDENTIALS',
+      'GOOGLE_API_KEY': 'VITE_GOOGLE_API_KEY',
+      'GCP_PROJECT_ID': 'VITE_GCP_PROJECT_ID',
+      'STRIPE_SECRET_KEY': 'VITE_STRIPE_SECRET_KEY',
+      'STRIPE_PUBLISHABLE_KEY': 'VITE_STRIPE_PUBLISHABLE_KEY',
+      'STRIPE_WEBHOOK_SECRET': 'VITE_STRIPE_WEBHOOK_SECRET',
+      'PAYPAL_CLIENT_ID': 'VITE_PAYPAL_CLIENT_ID',
+      'PAYPAL_CLIENT_SECRET': 'VITE_PAYPAL_CLIENT_SECRET',
+      'PAYPAL_WEBHOOK_ID': 'VITE_PAYPAL_WEBHOOK_ID',
+      'SQUARE_ACCESS_TOKEN': 'VITE_SQUARE_ACCESS_TOKEN',
+      'SQUARE_APPLICATION_ID': 'VITE_SQUARE_APPLICATION_ID',
+      'TWILIO_ACCOUNT_SID': 'VITE_TWILIO_ACCOUNT_SID',
+      'TWILIO_AUTH_TOKEN': 'VITE_TWILIO_AUTH_TOKEN',
+    };
+
+    const envKey = credentialMap[name] || name;
+    if (!envVars[envKey]) {
+      envVars[envKey] = { value, source: source + ' (name-value pair)' };
+    }
+  }
+
+  // Pattern 16: Hardcoded AWS Access Keys (AKIA...)
+  const awsAccessKeyPattern = /["']?(AKIA[0-9A-Z]{16})["']?/g;
+  for (const match of content.matchAll(awsAccessKeyPattern)) {
+    const key = match[1];
+    const detectedKey = `DETECTED_AWS_ACCESS_KEY`;
+    if (!envVars[detectedKey]) {
+      envVars[detectedKey] = { value: key, source: source + ' (hardcoded AWS key)' };
+    }
+  }
+
+  // Pattern 17: Hardcoded AWS Secret Keys (40-character base64-like strings)
+  const awsSecretPattern = /["']([A-Za-z0-9/+=]{40})["']/g;
+  let awsSecretCount = 0;
+  for (const match of content.matchAll(awsSecretPattern)) {
+    const secret = match[1];
+    // Only flag if it looks like AWS secret (has mix of upper/lower/special chars)
+    if (secret.match(/[A-Z]/) && secret.match(/[a-z]/) && secret.match(/[/+=]/)) {
+      const detectedKey = `DETECTED_AWS_SECRET_${awsSecretCount++}`;
+      if (!envVars[detectedKey]) {
+        envVars[detectedKey] = { value: secret, source: source + ' (potential AWS secret)' };
+      }
+    }
+  }
+
+  // Pattern 18: UUIDs (common in API tokens)
+  const uuidPattern = /["']?([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})["']?/g;
+  let uuidCount = 0;
+  for (const match of content.matchAll(uuidPattern)) {
+    const uuid = match[1];
+    // Only include first few UUIDs to avoid noise
+    if (uuidCount < 3) {
+      const detectedKey = `DETECTED_UUID_${uuidCount++}`;
+      envVars[detectedKey] = { value: uuid, source: source + ' (UUID/token)' };
+    }
+  }
+
+  // Pattern 19: Stripe keys (sk_live_, pk_live_, sk_test_, pk_test_)
+  const stripeKeyPattern = /["']?((?:sk_|pk_)(?:live|test)_[0-9A-Za-z]{24,})["']?/g;
+  for (const match of content.matchAll(stripeKeyPattern)) {
+    const key = match[1];
+    const keyType = key.startsWith('sk_') ? 'SECRET' : 'PUBLISHABLE';
+    const keyEnv = key.includes('_live_') ? 'LIVE' : 'TEST';
+    const detectedKey = `DETECTED_STRIPE_${keyType}_${keyEnv}`;
+    if (!envVars[detectedKey]) {
+      envVars[detectedKey] = { value: key, source: source + ' (Stripe key)' };
+    }
+  }
+
+  // Pattern 20: Google API keys (AIza...)
+  const googleApiKeyPattern = /["']?(AIza[0-9A-Za-z_-]{35})["']?/g;
+  for (const match of content.matchAll(googleApiKeyPattern)) {
+    const key = match[1];
+    const detectedKey = `DETECTED_GOOGLE_API_KEY`;
+    if (!envVars[detectedKey]) {
+      envVars[detectedKey] = { value: key, source: source + ' (Google API key)' };
+    }
+  }
+
+  // Pattern 21: Generic API keys (long alphanumeric strings)
+  const genericApiKeyPattern = /["']([a-zA-Z0-9_-]{32,})["']/g;
+  let apiKeyCount = 0;
+  for (const match of content.matchAll(genericApiKeyPattern)) {
+    const key = match[1];
+    // Only flag if it looks random (has good mix of chars) and isn't a hash
+    const hasUpperAndLower = key.match(/[A-Z]/) && key.match(/[a-z]/);
+    const hasNumbers = key.match(/[0-9]/);
+    const notTooManyRepeats = !key.match(/(.)\1{5,}/); // Not like "aaaaaa"
+
+    if (hasUpperAndLower && hasNumbers && notTooManyRepeats && apiKeyCount < 5) {
+      const detectedKey = `DETECTED_API_KEY_${apiKeyCount++}`;
+      envVars[detectedKey] = { value: key, source: source + ' (potential API key)' };
+    }
+  }
+
   return envVars;
 }
 
@@ -586,6 +914,9 @@ function applyFilters() {
       case 'public':
         includeByFilter = key === 'PUBLIC_URL' || key.includes('PUBLIC');
         break;
+      case 'secrets':
+        includeByFilter = key.startsWith('DETECTED_');
+        break;
     }
     
     // Apply search
@@ -601,6 +932,15 @@ function applyFilters() {
   }, {});
   
   displayEnvironmentVariables();
+
+  // Show warning if secrets detected
+  const hasSecrets = Object.keys(allEnvVars).some(key => key.startsWith('DETECTED_'));
+  const warningEl = document.getElementById('secretsWarning');
+  if (hasSecrets && warningEl) {
+    warningEl.classList.remove('hidden');
+  } else if (warningEl) {
+    warningEl.classList.add('hidden');
+  }
 }
 
 function handleSearch() {
@@ -624,19 +964,37 @@ function displayEnvironmentVariables() {
   
   container.innerHTML = sortedKeys.map(key => {
     const { value, source } = filteredVars[key];
-    const displayValue = value !== undefined && value !== null && value !== '' 
-      ? String(value) 
+    const displayValue = value !== undefined && value !== null && value !== ''
+      ? String(value)
       : '(empty)';
     const isEmpty = value === undefined || value === null || value === '';
-    
+
+    // Determine icon based on source
+    let icon = '📄';
+    if (source.includes('external script')) {
+      icon = '📦';
+    } else if (source.includes('inline script') || source.includes('bundled script')) {
+      icon = '📜';
+    } else if (source.includes('window')) {
+      icon = '🪟';
+    } else if (source.includes('hardcoded') || source.includes('DETECTED')) {
+      icon = '⚠️';
+    }
+
     return `
       <div class="env-item">
         <div class="env-key">
           <span>${escapeHtml(key)}</span>
-          <span class="env-source">${escapeHtml(source)}</span>
+          <span class="source-icon" title="${escapeHtml(source)}">
+            ${icon}
+            <span class="source-popover">${escapeHtml(source)}</span>
+          </span>
         </div>
         <div class="env-value ${isEmpty ? 'empty' : ''}">
-          ${escapeHtml(displayValue)}
+          <span class="value-text">${escapeHtml(displayValue)}</span>
+          <button class="copy-value-btn" data-value="${escapeHtml(displayValue)}" title="Copy value">
+            📋
+          </button>
         </div>
       </div>
     `;
@@ -698,6 +1056,40 @@ function exportToJson() {
   }, 2000);
 }
 
+function exportToEnv() {
+  // Create .env format: KEY=value (one per line)
+  const envContent = Object.keys(filteredVars)
+    .sort()
+    .map(key => {
+      const value = filteredVars[key].value;
+      // Escape quotes and handle multiline values
+      const escapedValue = String(value).replace(/"/g, '\\"');
+      // Quote values that contain spaces or special characters
+      const needsQuotes = /[\s#]/.test(String(value));
+      const formattedValue = needsQuotes ? `"${escapedValue}"` : escapedValue;
+      return `${key}=${formattedValue}`;
+    })
+    .join('\n');
+
+  const blob = new Blob([envContent], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '.env';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  const btn = document.getElementById('exportEnvBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Exported!';
+  setTimeout(() => {
+    btn.textContent = originalText;
+  }, 2000);
+}
+
 function showLoading() {
   document.getElementById('loading').classList.remove('hidden');
   document.getElementById('content').classList.add('hidden');
@@ -720,4 +1112,196 @@ function showError() {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('content').classList.add('hidden');
   document.getElementById('error').classList.remove('hidden');
+}
+
+// ===== Script Search Functionality =====
+
+let cachedScripts = [];
+
+// Toggle script search panel
+document.getElementById('toggleScriptSearch').addEventListener('click', () => {
+  const panel = document.getElementById('scriptSearchPanel');
+  panel.classList.toggle('hidden');
+
+  // Fetch scripts when panel is opened for the first time
+  if (!panel.classList.contains('hidden') && cachedScripts.length === 0) {
+    fetchPageScripts();
+  }
+});
+
+// Fetch all scripts from the current page
+async function fetchPageScripts() {
+  const resultsDiv = document.getElementById('scriptSearchResults');
+  resultsDiv.innerHTML = '<div class="search-loading">Loading page scripts...</div>';
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    // Get all script URLs
+    const scriptUrlsResult = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const urls = new Set();
+
+        // Get inline scripts
+        document.querySelectorAll('script:not([src])').forEach((script, index) => {
+          if (script.textContent && script.textContent.trim()) {
+            urls.add({
+              url: `inline-script-${index}`,
+              content: script.textContent,
+              type: 'inline'
+            });
+          }
+        });
+
+        // Get external scripts
+        document.querySelectorAll('script[src]').forEach(script => {
+          const src = script.src;
+          if (src && !src.startsWith('chrome-extension://')) {
+            urls.add({
+              url: src,
+              content: null,
+              type: 'external'
+            });
+          }
+        });
+
+        return Array.from(urls);
+      }
+    });
+
+    const scripts = scriptUrlsResult[0]?.result || [];
+
+    // Fetch external script contents
+    for (const script of scripts) {
+      if (script.type === 'external') {
+        try {
+          const response = await fetch(script.url);
+          script.content = await response.text();
+        } catch (error) {
+          console.log('Could not fetch script:', script.url);
+          script.content = null;
+        }
+      }
+    }
+
+    cachedScripts = scripts.filter(s => s.content);
+
+    resultsDiv.innerHTML = `
+      <div class="search-no-results">
+        Loaded ${cachedScripts.length} script(s). Enter search term above.
+      </div>
+    `;
+  } catch (error) {
+    resultsDiv.innerHTML = `
+      <div class="search-no-results">
+        Error loading scripts: ${error.message}
+      </div>
+    `;
+  }
+}
+
+// Search in scripts
+document.getElementById('scriptSearchInput').addEventListener('input', (e) => {
+  const searchTerm = e.target.value.trim();
+
+  if (!searchTerm || searchTerm.length < 2) {
+    document.getElementById('scriptSearchResults').innerHTML = `
+      <div class="search-no-results">
+        Enter at least 2 characters to search
+      </div>
+    `;
+    return;
+  }
+
+  searchInScripts(searchTerm);
+});
+
+function searchInScripts(searchTerm) {
+  const resultsDiv = document.getElementById('scriptSearchResults');
+  const results = [];
+
+  // Search in all cached scripts
+  for (const script of cachedScripts) {
+    const matches = [];
+    const lines = script.content.split('\n');
+
+    lines.forEach((line, lineIndex) => {
+      const index = line.toLowerCase().indexOf(searchTerm.toLowerCase());
+      if (index !== -1) {
+        matches.push({
+          lineNumber: lineIndex + 1,
+          line: line,
+          matchIndex: index
+        });
+      }
+    });
+
+    if (matches.length > 0) {
+      results.push({
+        scriptName: script.url,
+        matches: matches.slice(0, 5) // Limit to first 5 matches per file
+      });
+    }
+  }
+
+  // Display results
+  if (results.length === 0) {
+    resultsDiv.innerHTML = `
+      <div class="search-no-results">
+        No matches found for "${escapeHtml(searchTerm)}"
+      </div>
+    `;
+    return;
+  }
+
+  resultsDiv.innerHTML = results.map(result => {
+    const fileName = result.scriptName.includes('inline-script-')
+      ? result.scriptName
+      : result.scriptName.split('/').pop() || result.scriptName;
+
+    const matchesHtml = result.matches.map(match => {
+      // Highlight the match
+      const before = match.line.substring(0, match.matchIndex);
+      const matchText = match.line.substring(match.matchIndex, match.matchIndex + searchTerm.length);
+      const after = match.line.substring(match.matchIndex + searchTerm.length);
+
+      // Truncate long lines
+      let displayLine = before + matchText + after;
+      if (displayLine.length > 150) {
+        const start = Math.max(0, match.matchIndex - 50);
+        const end = Math.min(displayLine.length, match.matchIndex + searchTerm.length + 50);
+        displayLine = (start > 0 ? '...' : '') +
+                     displayLine.substring(start, end) +
+                     (end < displayLine.length ? '...' : '');
+      }
+
+      const highlightedLine = displayLine.replace(
+        new RegExp(escapeRegex(searchTerm), 'gi'),
+        match => `<mark>${escapeHtml(match)}</mark>`
+      );
+
+      return `
+        <div class="search-result-preview">
+          Line ${match.lineNumber}: ${highlightedLine}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="search-result-item">
+        <div class="search-result-file" title="${escapeHtml(result.scriptName)}">
+          📄 ${escapeHtml(fileName)}
+        </div>
+        <div class="search-result-matches">
+          ${result.matches.length} match${result.matches.length !== 1 ? 'es' : ''}
+        </div>
+        ${matchesHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

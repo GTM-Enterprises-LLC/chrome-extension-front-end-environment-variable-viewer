@@ -126,3 +126,76 @@ services:
       - "5185:5175"
     env_file:
       - ./dangerous-keys-demos/payment-apis-demo/.env
+
+  # Vue Demo - Development
+  vue-demo-dev:
+    build:
+      context: ./all-basic-demos/vue-demo
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "5176:5173"
+    volumes:
+      - ./all-basic-demos/vue-demo:/app
+      - /app/node_modules
+    env_file:
+      - ./all-basic-demos/vue-demo/.env
+
+  # Vue Demo - Production Build
+  vue-demo-prod:
+    build:
+      context: ./all-basic-demos/vue-demo
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "8081:4173"
+    env_file:
+      - ./all-basic-demos/vue-demo/.env
+
+  # Svelte Demo - Development
+  svelte-demo-dev:
+    build:
+      context: ./all-basic-demos/svelte-demo
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "5177:5173"
+    volumes:
+      - ./all-basic-demos/svelte-demo:/app
+      - /app/node_modules
+    env_file:
+      - ./all-basic-demos/svelte-demo/.env
+
+  # Svelte Demo - Production Build
+  svelte-demo-prod:
+    build:
+      context: ./all-basic-demos/svelte-demo
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "8082:4173"
+    env_file:
+      - ./all-basic-demos/svelte-demo/.env
+
+  # Angular Demo - Development
+  angular-demo-dev:
+    build:
+      context: ./all-basic-demos/angular-demo
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./all-basic-demos/angular-demo:/app
+      - /app/node_modules
+    environment:
+      - NODE_OPTIONS=--max-old-space-size=4096
+
+  # Angular Demo - Production Build
+  angular-demo-prod:
+    build:
+      context: ./all-basic-demos/angular-demo
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "8083:4173"

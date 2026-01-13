@@ -1,0 +1,25 @@
+{
+  "name": "envvars-chrome-extension",
+  "version": "3.3.0",
+  "description": "Chrome extension to detect frontend environment variables",
+  "scripts": {
+    "test": "node test-extension.js",
+    "test:watch": "nodemon test-extension.js",
+    "test:ci": "node test-extension.js --ci"
+  },
+  "keywords": [
+    "chrome-extension",
+    "environment-variables",
+    "react",
+    "vue",
+    "svelte",
+    "angular",
+    "vite",
+    "nextjs"
+  ],
+  "author": "GTM Enterprises LLC",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

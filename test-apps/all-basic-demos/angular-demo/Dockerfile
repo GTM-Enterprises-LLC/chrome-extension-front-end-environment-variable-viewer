@@ -4,8 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
+EXPOSE 4200
+CMD ["npm", "start", "--", "--host", "0.0.0.0"]
 
 # Build stage
 FROM node:18-alpine AS build
@@ -15,12 +15,10 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Production stage - serve with Next.js
+# Production stage
 FROM node:18-alpine AS prod
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY --from=build /app/.next ./.next
-COPY --from=build /app/app ./app
-EXPOSE 3000
-CMD ["npm", "start"]
+RUN npm install -g serve
+COPY --from=build /app/dist/angular-demo/browser ./dist
+EXPOSE 4173
+CMD ["serve", "-s", "dist", "-l", "4173"]

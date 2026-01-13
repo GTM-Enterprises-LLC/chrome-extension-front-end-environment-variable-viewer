@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "EnvVars",
-  "version": "2.1.0",
-  "description": "View environment variables from React, Vite, Next.js, Vue, Nuxt, and other frontend frameworks",
+  "version": "3.3.0",
+  "description": "Detect environment variables and hardcoded secrets (AWS keys, API tokens, UUIDs) in React, Vue, Svelte, Angular, Vite, Next.js, and other frontend frameworks",
   "permissions": [
     "activeTab",
     "scripting"

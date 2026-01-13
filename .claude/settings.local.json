@@ -5,7 +5,21 @@
       "Bash(docker ps:*)",
       "Bash(docker logs:*)",
       "Bash(ls:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(chmod:*)",
+      "Bash(node test-extension.js:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npx sv create svelte-demo)",
+      "Bash(npx degit sveltejs/template svelte-demo)",
+      "Bash(npm install:*)",
+      "Bash(npx:*)",
+      "Bash(npm init:*)",
+      "Bash(docker-compose up:*)"
     ]
   }
 }

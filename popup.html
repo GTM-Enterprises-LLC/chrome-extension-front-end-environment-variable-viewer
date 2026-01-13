@@ -22,16 +22,32 @@
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="Search variables...">
       </div>
-      
+
       <div class="filter-buttons">
         <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="react">REACT_APP_*</button>
-        <button class="filter-btn" data-filter="vite">VITE_*</button>
-        <button class="filter-btn" data-filter="next">NEXT_PUBLIC_*</button>
-        <button class="filter-btn" data-filter="vue">VUE_APP_*</button>
+        <button class="filter-btn" data-filter="react">REACT_APP</button>
+        <button class="filter-btn" data-filter="vite">VITE</button>
+        <button class="filter-btn" data-filter="next">NEXT_PUBLIC</button>
+        <button class="filter-btn" data-filter="vue">VUE_APP</button>
         <button class="filter-btn" data-filter="node">NODE_ENV</button>
+        <button class="filter-btn filter-secrets" data-filter="secrets">🔐 Secrets</button>
       </div>
-      
+
+      <div id="secretsWarning" class="secrets-warning hidden">
+        ⚠️ <strong>Hardcoded secrets detected!</strong> These should never be in frontend code.
+      </div>
+
+      <!-- Script Search Feature -->
+      <div class="script-search-section">
+        <button id="toggleScriptSearch" class="toggle-search-btn">
+          🔍 Search Scripts
+        </button>
+        <div id="scriptSearchPanel" class="script-search-panel hidden">
+          <input type="text" id="scriptSearchInput" placeholder="Search in page scripts...">
+          <div id="scriptSearchResults" class="script-search-results"></div>
+        </div>
+      </div>
+
       <div id="envVars" class="env-vars"></div>
       
       <div id="noVars" class="no-vars hidden">
@@ -47,6 +63,7 @@
     <footer>
       <button id="copyBtn" class="btn-copy">Copy All</button>
       <button id="exportBtn" class="btn-export">Export JSON</button>
+      <button id="exportEnvBtn" class="btn-env">Export .env</button>
     </footer>
   </div>
   
