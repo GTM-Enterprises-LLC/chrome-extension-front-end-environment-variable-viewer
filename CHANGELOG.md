@@ -34,6 +34,29 @@ All notable changes to the EnvVars Chrome Extension will be documented in this f
 - Prevents detection of common non-environment properties
 - Significantly reduces noise in results for better accuracy
 
+### 🧪 Testing Infrastructure
+
+**Playwright E2E Testing:**
+- Added Playwright as primary E2E testing framework
+- 9 comprehensive tests covering all 8 test applications
+- Tests verify app availability and JavaScript loading
+- Superior to Cypress for extension testing
+- Works on macOS 26.2+ (Cypress incompatible)
+- Interactive UI mode for debugging
+- Automated test reports with screenshots
+
+**Project Cleanup:**
+- Added `.gitignore` to exclude node_modules and test artifacts
+- Removed node_modules from git tracking
+- Excluded playwright-report/ and test-results/ directories
+- Cleaner repository structure
+
+**NPM Scripts:**
+- `npm run test:e2e` - Run Playwright tests (9 tests)
+- `npm run test:e2e:headed` - Run with visible browser
+- `npm run test:e2e:ui` - Interactive test UI
+- `npm run playwright:report` - View HTML test report
+
 ## [3.3.0] - 2026-01-13
 
 ### ✨ New Features

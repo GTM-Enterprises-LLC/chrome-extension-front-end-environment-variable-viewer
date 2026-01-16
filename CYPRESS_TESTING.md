@@ -1,6 +1,34 @@
 # Cypress Testing with Chrome Extension
 
+> **⚠️ IMPORTANT COMPATIBILITY WARNING**
+>
+> **Cypress does NOT work on macOS 26.2+ (Darwin 25.2.0 or later)**
+>
+> If you're running macOS 26.2 or later, Cypress will fail with:
+> ```
+> /Users/.../Cypress.app/Contents/MacOS/Cypress: bad option: --no-sandbox
+> Platform: darwin-x64 (macOS - 26.2)
+> Cypress Version: 15.8.2
+> ```
+>
+> **Solution:** Use [Playwright](./PLAYWRIGHT_TESTING.md) instead
+> - Playwright has native Chrome extension support
+> - Works on macOS 26.2+ and all modern operating systems
+> - Better extension testing capabilities
+> - Run: `npm run test:e2e`
+>
+> **Cypress is legacy** - Maintained for compatibility with older systems only.
+
+---
+
 This guide explains how to run Cypress E2E tests with the EnvVars Chrome extension loaded.
+
+## System Requirements
+
+- **Operating System**: macOS 25.x or earlier, Windows, Linux
+- **NOT Compatible**: macOS 26.2+ (use Playwright instead)
+- **Node.js**: v20.1.0, v22.0.0, or v24.0.0+
+- **Cypress Version**: 15.8.2
 
 ## Prerequisites
 
@@ -270,10 +298,47 @@ To test the extension itself, use manual testing or Playwright (which has better
    # etc.
    ```
 
+## Known Issues
+
+### macOS 26.2+ Incompatibility
+
+**Error:**
+```
+/Users/.../Cypress.app/Contents/MacOS/Cypress: bad option: --no-sandbox
+Platform: darwin-x64 (macOS - 26.2)
+```
+
+**Cause:** Cypress binary is incompatible with macOS 26.2+ (Darwin kernel 25.2.0+)
+
+**Solutions:**
+1. **Use Playwright** (recommended):
+   ```bash
+   npm run test:e2e
+   ```
+   See [PLAYWRIGHT_TESTING.md](./PLAYWRIGHT_TESTING.md)
+
+2. **Downgrade macOS** (not recommended)
+
+3. **Use virtual machine** with older macOS version
+
+### Node.js Version Mismatch
+
+**Warning:**
+```
+EBADENGINE Unsupported engine
+package: 'cypress@15.8.2'
+required: { node: '^20.1.0 || ^22.0.0 || >=24.0.0' }
+current: { node: 'v23.11.1' }
+```
+
+**Impact:** Warning only, but may cause issues. Node 23.x is between supported versions.
+
+**Solution:** Use Playwright or downgrade to Node 22.x
+
 ## Additional Resources
 
 - [Cypress Documentation](https://docs.cypress.io/)
-- [Testing Chrome Extensions](https://developer.chrome.com/docs/extensions/mv3/tut_testing/)
+- [PLAYWRIGHT_TESTING.md](./PLAYWRIGHT_TESTING.md) - **Recommended alternative**
 - [TESTING_URLS.md](./TESTING_URLS.md) - Manual testing checklist
 - [TESTING.md](./TESTING.md) - Comprehensive testing guide
 

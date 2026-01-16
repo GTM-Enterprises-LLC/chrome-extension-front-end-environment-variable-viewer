@@ -1,12 +1,70 @@
-# Automated Testing Guide
+# Testing Guide
 
 ## Overview
 
-This project includes automated testing for the Chrome extension's environment variable detection capabilities. The test suite validates that the extension correctly identifies and extracts environment variables from production and development builds across different frameworks.
+This project includes comprehensive automated testing for the Chrome extension. Three levels of testing ensure quality and reliability:
 
-## Quick Start
+1. **E2E Testing with Playwright** (Recommended) - Browser automation testing with extension loaded
+2. **E2E Testing with Cypress** (Legacy) - Alternative browser testing (macOS 26+ compatibility issues)
+3. **Unit/Integration Testing** - JavaScript detection pattern validation
 
-### Run Tests
+## Testing Frameworks
+
+### 🎭 Playwright (Recommended)
+
+**Best for:** End-to-end testing with Chrome extension support
+
+```bash
+# Install dependencies
+npm install
+
+# Install Playwright browsers
+npx playwright install chromium
+
+# Run E2E tests (9 tests - should all pass)
+npm run test:e2e
+
+# Run with visible browser
+npm run test:e2e:headed
+
+# Interactive UI mode for debugging
+npm run test:e2e:ui
+
+# View HTML test report
+npm run playwright:report
+```
+
+**Why Playwright:**
+- Native Chrome extension support via `launchPersistentContext`
+- Works on macOS 26.2+ and all modern OS versions
+- Can access and parse JavaScript bundles
+- Interactive debugging tools
+- Modern, actively maintained
+
+**See:** [PLAYWRIGHT_TESTING.md](./PLAYWRIGHT_TESTING.md) for complete guide
+
+### 🌲 Cypress (Legacy)
+
+**Best for:** Users on macOS 25.x or earlier
+
+```bash
+# Run Cypress tests
+npm run cypress:run
+
+# Open Cypress UI
+npm run cypress:open
+```
+
+**⚠️ Known Issues:**
+- Incompatible with macOS 26.2+ (Darwin 25.2.0)
+- Error: "bad option: --no-sandbox"
+- Use Playwright instead on newer systems
+
+**See:** [CYPRESS_TESTING.md](./CYPRESS_TESTING.md) for complete guide
+
+### ⚙️ Unit/Integration Testing
+
+**Best for:** Fast validation of detection patterns
 
 ```bash
 # Run all tests
@@ -14,6 +72,27 @@ npm test
 
 # Or directly
 node test-extension.js
+```
+
+## Quick Start
+
+### Option 1: Playwright E2E Tests (Recommended)
+
+```bash
+# 1. Start test applications
+cd test-apps && docker compose up -d && cd ..
+
+# 2. Run Playwright tests
+npm run test:e2e
+
+# Expected: 9 passed (all green)
+```
+
+### Option 2: Unit/Integration Tests
+
+```bash
+# Run detection pattern tests
+npm test
 ```
 
 ### Prerequisites

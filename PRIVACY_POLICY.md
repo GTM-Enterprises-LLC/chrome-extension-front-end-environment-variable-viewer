@@ -1,6 +1,7 @@
-The scripting permission is required to inject a content script into the active tab to access the page's window object and DOM. This script reads publicly-exposed environment variables from framework-specific objects (like window.__NEXT_DATA__, window.__NUXT__, window.env) and parses inline scripts for bundled environment variable patterns. The script only reads data and makes no modifications to the page.# Privacy Policy for EnvVars Chrome Extension
+# Privacy Policy for EnvVars Chrome Extension
 
-**Last Updated: December 23, 2025**
+**Last Updated: January 15, 2026**
+**Version: 3.4.0**
 
 ## Overview
 
@@ -48,6 +49,14 @@ We do not sell, trade, or transfer any user data to third parties. The Extension
 ## Third-Party Services
 
 The Extension does not integrate with any third-party analytics, advertising, or tracking services.
+
+## Development and Testing
+
+The Extension includes automated testing infrastructure (Playwright, Cypress) for quality assurance. **These testing tools are development-only dependencies** and are:
+- NOT included in the distributed extension
+- NOT executed when you use the extension
+- NOT able to access your data
+- Used only by developers to ensure extension quality
 
 ## Open Source
 

@@ -117,10 +117,16 @@ Clean, modern interface with:
 - Fixed false positive NODE_ENV detection
 - Improved pattern matching for minified code
 
-**Improvements:**
-- Enhanced Docker support for all demo apps
-- Comprehensive test suite covering 8 frameworks
-- Better handling of mixed quote styles
+**v3.0.0 - Secret Detection:**
+- Hardcoded secret detection (AWS, Stripe, Google, UUIDs)
+- Security warning banner
+- 21+ detection patterns
+
+**Quality Assurance:**
+- Comprehensive Playwright E2E test suite (9 passing tests)
+- Automated testing for all 8 frameworks
+- Docker-based testing infrastructure
+- Well-tested and production-ready
 
 ### 📚 Use Cases
 
@@ -209,37 +215,37 @@ Detects and displays environment variables and hardcoded secrets in frontend Jav
 
 ## Screenshots to Upload
 
-### Screenshot 1: Main Interface with New Icons
-**Title**: Clean Interface with Icon-Based Source Indicators
-**Description**: View all detected environment variables with visual icons showing source type. Hover icons for full source details. Compact design saves space!
+### Screenshot 1: Tab-Based Interface (v3.4.0)
+**Title**: Modern Tab-Based Navigation
+**Description**: NEW in v3.4.0! Separate tabs for Variables and Script Search. Clean, organized interface with extension icon in header. View more variables without scrolling thanks to condensed layout.
 
-### Screenshot 2: Script Search Feature
-**Title**: NEW - Search Across All Page Scripts
-**Description**: Search any text across all inline and external JavaScript files. Results show line numbers, match count, and highlighted previews.
+### Screenshot 2: Variables Tab with Individual Copy
+**Title**: Variables Tab with One-Click Copy
+**Description**: View all detected environment variables with individual 📋 copy buttons. Icon-based source indicators (📦 external, 📜 inline, 🪟 window, ⚠️ hardcoded). Compact, space-saving design.
 
-### Screenshot 3: Secrets Detection
-**Title**: Hardcoded Secrets Warning
-**Description**: Automatic detection of hardcoded AWS keys, Stripe keys, API tokens, and UUIDs with visual warning banner.
+### Screenshot 3: Script Search Tab
+**Title**: Script Search Tab - Search All Page Scripts
+**Description**: Dedicated tab for searching across all inline and external JavaScript files. Results show line numbers, match count, and highlighted previews with context.
 
-### Screenshot 4: Framework Filters (Compact)
-**Title**: Multi-Framework Support with Compact Design
-**Description**: Filter by React, Vue, Angular, Svelte, Next.js, Vite. Reduced button sizes for cleaner interface.
+### Screenshot 4: Secrets Detection Warning
+**Title**: Hardcoded Secrets Detection & Warning
+**Description**: Automatic detection of AWS keys, Stripe keys, Google API keys, UUIDs, and generic API tokens. Visual warning banner alerts you to security risks.
 
-### Screenshot 5: Search & Export
-**Title**: Search and Export Features
-**Description**: Quickly search for specific variables and export results as JSON for documentation or security reports.
+### Screenshot 5: Framework Filters
+**Title**: Multi-Framework Support (8+ Frameworks)
+**Description**: Filter by React, Vue, Angular, Svelte, Next.js, Vite, Nuxt, Gatsby. Smart filters show only relevant variables. Compact button design maximizes screen space.
 
-### Screenshot 6: React App Detection
-**Title**: React Environment Variables
-**Description**: Automatically detects REACT_APP_* variables in production builds, even in minified code.
+### Screenshot 6: Individual Copy & Export Features
+**Title**: Copy Individual Values or Export All
+**Description**: One-click copy for each variable value. Export all as JSON for reports or .env format for local development. Quick, efficient workflow.
 
-### Screenshot 7: Secret Filter View
-**Title**: Security Audit View
-**Description**: Dedicated secrets filter (🔐) highlights detected credentials for quick security review.
+### Screenshot 7: React Production Build Detection
+**Title**: React Environment Variables in Production
+**Description**: Automatically detects REACT_APP_* variables in production builds, even in minified webpack bundles. Works with all modern bundlers.
 
-### Screenshot 8: Icon Popover in Action
-**Title**: Source Details on Hover
-**Description**: Hover over source icons (📦📜🪟⚠️) to see full source information. Space-saving design with instant details.
+### Screenshot 8: Security Audit with Secrets Filter
+**Title**: Security Audit View - Secrets Filter
+**Description**: Dedicated 🔐 Secrets filter highlights all detected credentials for quick security review. Perfect for pre-release audits and compliance checks.
 
 
 ## Promotional Tiles (optional)
@@ -310,7 +316,7 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 
 ## Pre-Launch Checklist
 
-- [ ] All screenshots captured and edited
+- [ ] All screenshots captured and edited (8 screenshots showing v3.4.0 features)
 - [ ] Store icon uploaded (128x128)
 - [ ] Privacy policy page accessible
 - [ ] GitHub issues link working
@@ -320,7 +326,14 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 - [ ] Permissions justifications clear and accurate
 - [ ] Test extension in incognito mode
 - [ ] Verify extension works on multiple sites
-- [ ] Run automated tests: `npm test`
+- [ ] Run automated tests: `npm run test:e2e` (9 Playwright tests should pass)
+- [ ] Run integration tests: `npm test`
+- [ ] Test on all 8 demo apps (React, Vue, Angular, Svelte, Next.js, Vite, Multicloud, Payment)
+- [ ] Verify tab navigation works smoothly
+- [ ] Test individual copy buttons for each variable
+- [ ] Test export to JSON and .env formats
+- [ ] Verify script search tab functionality
+- [ ] Check secrets detection and warning banner
 
 ## Post-Launch Actions
 

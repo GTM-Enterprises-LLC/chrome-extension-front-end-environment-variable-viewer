@@ -2,6 +2,52 @@
 
 All Docker containers are now running! Use these URLs to test the extension across all supported frameworks.
 
+## 🤖 Automated Testing
+
+### Playwright E2E Tests (Recommended)
+
+```bash
+# Run all automated tests (9 tests)
+npm run test:e2e
+
+# Run with visible browser
+npm run test:e2e:headed
+
+# Interactive UI mode
+npm run test:e2e:ui
+
+# View test report
+npm run playwright:report
+```
+
+**What it tests:**
+- All 8 test applications load successfully
+- JavaScript files are present and accessible
+- HTTP 200 responses for all URLs
+- Extension can be loaded in browser
+
+See [PLAYWRIGHT_TESTING.md](./PLAYWRIGHT_TESTING.md) for complete guide.
+
+### Cypress Tests (Legacy - macOS 26+ incompatible)
+
+```bash
+# Run Cypress tests (if compatible)
+npm run cypress:run
+
+# Open Cypress UI
+npm run cypress:open
+```
+
+**Note:** Cypress doesn't work on macOS 26.2+. Use Playwright instead.
+
+See [CYPRESS_TESTING.md](./CYPRESS_TESTING.md) for details.
+
+---
+
+## 📍 Manual Testing URLs
+
+Use these URLs for manual testing with the extension:
+
 ## 🚀 Production Builds (Recommended for Testing)
 
 These are minified production builds that best represent real-world usage:

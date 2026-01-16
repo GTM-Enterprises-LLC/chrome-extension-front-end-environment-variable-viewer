@@ -7,22 +7,47 @@ This directory contains all test applications for the Chrome Extension Environme
 - [Basic Demos README](./all-basic-demos/README.md) - Standard framework demos
 - [Dangerous Keys Demos README](./dangerous-keys-demos/DANGEROUS-KEYS-README.md) - Security testing demos
 
-## Running Tests
+## Automated Testing with Playwright
+
+The extension includes comprehensive E2E tests using Playwright:
+
+```bash
+# From project root, start all test apps
+cd test-apps && docker compose up -d && cd ..
+
+# Run Playwright E2E tests (9 tests)
+npm run test:e2e
+
+# Expected output: 9 passed
+```
+
+**What it tests:**
+- All 8 test applications load successfully (React, Vite, Next.js, Vue, Svelte, Angular, Multicloud, Payment)
+- JavaScript files are accessible
+- HTTP 200 responses
+- Extension can be loaded with each app
+
+See [../PLAYWRIGHT_TESTING.md](../PLAYWRIGHT_TESTING.md) for complete guide.
+
+## Running Tests Manually
 
 ### With Docker (Recommended)
 ```bash
-# Start all dev servers
-docker compose -f test-apps/docker-compose.yml up react-demo-dev vite-demo-dev nextjs-demo-dev
+# Start all production servers (recommended for testing)
+docker compose up -d
 
-# Or use the helper script
-./test-apps/run-tests.sh dev
+# Or start specific apps
+docker compose up react-demo-prod vite-demo-prod nextjs-demo-prod
+
+# Or start all dev servers
+docker compose up react-demo-dev vite-demo-dev nextjs-demo-dev
 ```
 
 ### Without Docker
 ```bash
 cd test-apps/all-basic-demos/[app-name]
 npm install
-npm run dev
+npm run dev  # or npm run build && npm run preview
 ```
 
 ## Port Mapping

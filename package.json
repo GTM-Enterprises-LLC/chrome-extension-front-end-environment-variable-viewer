@@ -1,7 +1,15 @@
 {
   "name": "envvars-chrome-extension",
   "version": "3.4.0",
-  "description": "Chrome extension to detect frontend environment variables",
+  "description": "Chrome extension to detect environment variables and hardcoded secrets in React, Vue, Angular, Svelte, Next.js, and other frontend frameworks",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues"
+  },
+  "homepage": "https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer#readme",
   "scripts": {
     "test": "node test-extension.js",
     "test:watch": "nodemon test-extension.js",
@@ -19,12 +27,18 @@
   "keywords": [
     "chrome-extension",
     "environment-variables",
+    "secrets-detection",
+    "security-audit",
     "react",
     "vue",
-    "svelte",
     "angular",
+    "svelte",
     "vite",
-    "nextjs"
+    "nextjs",
+    "aws-keys",
+    "api-keys",
+    "developer-tools",
+    "frontend-security"
   ],
   "author": "GTM Enterprises LLC",
   "license": "MIT",
