@@ -696,6 +696,26 @@ function parseScriptForEnvVars(content, source) {
       const key = pair.key;
       const value = pair.value;
 
+      // Blacklist common generic JavaScript properties that are never env vars
+      const genericBlacklist = [
+        'name', 'value', 'type', 'id', 'key', 'data', 'options', 'config',
+        'params', 'props', 'state', 'index', 'length', 'size', 'count',
+        'status', 'code', 'message', 'error', 'result', 'response', 'label',
+        'title', 'text', 'description', 'className', 'style', 'children',
+        'href', 'src', 'alt', 'placeholder', 'disabled', 'enabled', 'visible'
+      ];
+
+      // Also blacklist generic values
+      const genericValues = [
+        'value', 'name', 'type', 'id', 'key', 'data', 'text', 'label',
+        'title', 'description', 'null', 'undefined', 'object', 'function'
+      ];
+
+      if (genericBlacklist.includes(key.toLowerCase()) ||
+          genericValues.includes(value.toLowerCase())) {
+        continue; // Skip generic property names and values
+      }
+
       // Check if this looks like an env var value
       const looksLikeEnvValue =
         value.startsWith('http://') ||
@@ -802,27 +822,26 @@ function parseScriptForEnvVars(content, source) {
     }
   }
 
-  // Pattern 16: Hardcoded AWS Access Keys (AKIA...)
-  const awsAccessKeyPattern = /["']?(AKIA[0-9A-Z]{16})["']?/g;
-  for (const match of content.matchAll(awsAccessKeyPattern)) {
+  // Pattern 16: Access Keys starting with AKIA (common pattern)
+  const accessKeyPattern = /["']?(AKIA[0-9A-Z]{16})["']?/g;
+  for (const match of content.matchAll(accessKeyPattern)) {
     const key = match[1];
-    const detectedKey = `DETECTED_AWS_ACCESS_KEY`;
+    const detectedKey = `ACCESS_KEY_ID`;
     if (!envVars[detectedKey]) {
-      envVars[detectedKey] = { value: key, source: source + ' (hardcoded AWS key)' };
+      envVars[detectedKey] = { value: key, source: source + ' (hardcoded access key)' };
     }
   }
 
-  // Pattern 17: Hardcoded AWS Secret Keys (40-character base64-like strings)
-  const awsSecretPattern = /["']([A-Za-z0-9/+=]{40})["']/g;
-  let awsSecretCount = 0;
-  for (const match of content.matchAll(awsSecretPattern)) {
+  // Pattern 17: Secret Keys (40-character base64-like strings)
+  const secretKeyPattern = /["']([A-Za-z0-9/+=]{40})["']/g;
+  let secretKeyCount = 0;
+  for (const match of content.matchAll(secretKeyPattern)) {
     const secret = match[1];
-    // Only flag if it looks like AWS secret (has mix of upper/lower/special chars)
+    // Only flag if it looks like a secret key (has mix of upper/lower/special chars)
     if (secret.match(/[A-Z]/) && secret.match(/[a-z]/) && secret.match(/[/+=]/)) {
-      const detectedKey = `DETECTED_AWS_SECRET_${awsSecretCount++}`;
-      if (!envVars[detectedKey]) {
-        envVars[detectedKey] = { value: secret, source: source + ' (potential AWS secret)' };
-      }
+      const detectedKey = `SECRET_KEY${secretKeyCount > 0 ? '_' + secretKeyCount : ''}`;
+      envVars[detectedKey] = { value: secret, source: source + ' (potential secret key)' };
+      secretKeyCount++;
     }
   }
 
@@ -833,30 +852,31 @@ function parseScriptForEnvVars(content, source) {
     const uuid = match[1];
     // Only include first few UUIDs to avoid noise
     if (uuidCount < 3) {
-      const detectedKey = `DETECTED_UUID_${uuidCount++}`;
-      envVars[detectedKey] = { value: uuid, source: source + ' (UUID/token)' };
+      const detectedKey = `UUID_TOKEN${uuidCount > 0 ? '_' + uuidCount : ''}`;
+      envVars[detectedKey] = { value: uuid, source: source + ' (UUID token)' };
+      uuidCount++;
     }
   }
 
-  // Pattern 19: Stripe keys (sk_live_, pk_live_, sk_test_, pk_test_)
-  const stripeKeyPattern = /["']?((?:sk_|pk_)(?:live|test)_[0-9A-Za-z]{24,})["']?/g;
-  for (const match of content.matchAll(stripeKeyPattern)) {
+  // Pattern 19: Payment Keys (sk_*, pk_* patterns)
+  const paymentKeyPattern = /["']?((?:sk_|pk_)(?:live|test)_[0-9A-Za-z]{24,})["']?/g;
+  for (const match of content.matchAll(paymentKeyPattern)) {
     const key = match[1];
-    const keyType = key.startsWith('sk_') ? 'SECRET' : 'PUBLISHABLE';
+    const keyType = key.startsWith('sk_') ? 'SECRET' : 'PUBLIC';
     const keyEnv = key.includes('_live_') ? 'LIVE' : 'TEST';
-    const detectedKey = `DETECTED_STRIPE_${keyType}_${keyEnv}`;
+    const detectedKey = `PAYMENT_${keyType}_${keyEnv}`;
     if (!envVars[detectedKey]) {
-      envVars[detectedKey] = { value: key, source: source + ' (Stripe key)' };
+      envVars[detectedKey] = { value: key, source: source + ' (payment API key)' };
     }
   }
 
-  // Pattern 20: Google API keys (AIza...)
-  const googleApiKeyPattern = /["']?(AIza[0-9A-Za-z_-]{35})["']?/g;
-  for (const match of content.matchAll(googleApiKeyPattern)) {
+  // Pattern 20: API keys starting with AIza (common pattern)
+  const aizaKeyPattern = /["']?(AIza[0-9A-Za-z_-]{35})["']?/g;
+  for (const match of content.matchAll(aizaKeyPattern)) {
     const key = match[1];
-    const detectedKey = `DETECTED_GOOGLE_API_KEY`;
+    const detectedKey = `API_KEY_AIZA`;
     if (!envVars[detectedKey]) {
-      envVars[detectedKey] = { value: key, source: source + ' (Google API key)' };
+      envVars[detectedKey] = { value: key, source: source + ' (API key)' };
     }
   }
 
@@ -871,8 +891,9 @@ function parseScriptForEnvVars(content, source) {
     const notTooManyRepeats = !key.match(/(.)\1{5,}/); // Not like "aaaaaa"
 
     if (hasUpperAndLower && hasNumbers && notTooManyRepeats && apiKeyCount < 5) {
-      const detectedKey = `DETECTED_API_KEY_${apiKeyCount++}`;
+      const detectedKey = `API_KEY${apiKeyCount > 0 ? '_' + apiKeyCount : ''}`;
       envVars[detectedKey] = { value: key, source: source + ' (potential API key)' };
+      apiKeyCount++;
     }
   }
 
@@ -915,7 +936,9 @@ function applyFilters() {
         includeByFilter = key === 'PUBLIC_URL' || key.includes('PUBLIC');
         break;
       case 'secrets':
-        includeByFilter = key.startsWith('DETECTED_');
+        includeByFilter = key.includes('SECRET') || key.includes('ACCESS_KEY') ||
+                         key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
+                         key.includes('API_KEY');
         break;
     }
     
@@ -934,7 +957,11 @@ function applyFilters() {
   displayEnvironmentVariables();
 
   // Show warning if secrets detected
-  const hasSecrets = Object.keys(allEnvVars).some(key => key.startsWith('DETECTED_'));
+  const hasSecrets = Object.keys(allEnvVars).some(key =>
+    key.includes('SECRET') || key.includes('ACCESS_KEY') ||
+    key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
+    key.includes('API_KEY')
+  );
   const warningEl = document.getElementById('secretsWarning');
   if (hasSecrets && warningEl) {
     warningEl.classList.remove('hidden');
@@ -1114,20 +1141,33 @@ function showError() {
   document.getElementById('error').classList.remove('hidden');
 }
 
+// ===== Tab Navigation =====
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabName = btn.getAttribute('data-tab');
+
+    // Update active tab button
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update active tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(tabName + 'Tab').classList.add('active');
+
+    // Load scripts when switching to search tab for the first time
+    if (tabName === 'search' && cachedScripts.length === 0) {
+      fetchPageScripts();
+    }
+  });
+});
+
 // ===== Script Search Functionality =====
 
 let cachedScripts = [];
-
-// Toggle script search panel
-document.getElementById('toggleScriptSearch').addEventListener('click', () => {
-  const panel = document.getElementById('scriptSearchPanel');
-  panel.classList.toggle('hidden');
-
-  // Fetch scripts when panel is opened for the first time
-  if (!panel.classList.contains('hidden') && cachedScripts.length === 0) {
-    fetchPageScripts();
-  }
-});
 
 // Fetch all scripts from the current page
 async function fetchPageScripts() {

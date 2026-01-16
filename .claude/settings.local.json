@@ -19,7 +19,19 @@
       "Bash(npm install:*)",
       "Bash(npx:*)",
       "Bash(npm init:*)",
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "Bash(for url in http://localhost:3002 http://localhost:4173 http://localhost:3004 http://localhost:8081 http://localhost:8082 http://localhost:8083 http://localhost:5184 http://localhost:5185)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(node test-manual-cypress.js:*)",
+      "Bash(sw_vers:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run test:e2e:headed:*)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npm run playwright:report:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)"
     ]
   }
 }

@@ -51,8 +51,9 @@ Detect exposed environment variables and hardcoded secrets in React, Vue, Angula
 - Instantly see all detected variables
 - Filter by framework (React, Vue, Next.js, etc.)
 - Search functionality for quick lookup
-- **NEW: Search across all page scripts** for any text
-- **NEW: Copy individual values** with one-click 📋 button
+- **Tab-based interface** for organized navigation
+- **Search across all page scripts** in dedicated search tab
+- **Copy individual values** with one-click 📋 button
 - Copy all, export as JSON, or **export as .env** file
 
 **📊 Advanced Detection**
@@ -80,19 +81,26 @@ Detect exposed environment variables and hardcoded secrets in React, Vue, Angula
 ### 🎨 User Interface
 
 Clean, modern interface with:
-- Gradient header with refresh button
+- Gradient header with extension icon and refresh button
+- **Tab-based navigation** (Variables + Script Search)
 - Searchable variable list
 - Framework-specific filter buttons (compact design)
-- **NEW: Icon-based source indicators** with hover tooltips (saves space!)
-- **NEW: Script search panel** to search all page scripts
+- Icon-based source indicators with hover tooltips (saves space!)
+- **Dedicated script search tab** to search all page scripts
 - Warning banners for detected secrets
 - Copy to clipboard functionality
-- Export to JSON for reports
+- Export to JSON or .env format for reports
 - Responsive design that fits your workflow
 
-### 🔄 Recent Updates (v3.3.0)
+### 🔄 Recent Updates (v3.4.0)
 
-**New in v3.3.0:**
+**New in v3.4.0:**
+- 📑 Tab-based navigation (Variables tab + Script Search tab)
+- Extension icon in header for better branding
+- Fixed false positive detection of generic properties (name, value, etc.)
+- Cleaner, more organized interface
+
+**v3.3.0:**
 - 📋 Individual copy buttons for each variable value
 - Export to .env format (KEY=value, one per line)
 - Full secret values displayed (no truncation)
@@ -180,7 +188,7 @@ https://gtm-enterprises-llc.github.io/chrome-extension-front-end-environment-var
 https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues
 
 ## Version
-3.3.0
+3.4.0
 
 ## Permissions Justification
 
@@ -306,7 +314,7 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 - [ ] Store icon uploaded (128x128)
 - [ ] Privacy policy page accessible
 - [ ] GitHub issues link working
-- [ ] Version number matches manifest.json (3.1.0)
+- [ ] Version number matches manifest.json (3.4.0)
 - [ ] Description reviewed for typos
 - [ ] Keywords optimized for search
 - [ ] Permissions justifications clear and accurate
@@ -325,5 +333,5 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 ---
 
 **Last Updated**: 2026-01-13
-**Version**: 3.1.0
+**Version**: 3.4.0
 **Maintainer**: GTM Enterprises LLC

@@ -1,11 +1,20 @@
 {
   "name": "envvars-chrome-extension",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Chrome extension to detect frontend environment variables",
   "scripts": {
     "test": "node test-extension.js",
     "test:watch": "nodemon test-extension.js",
-    "test:ci": "node test-extension.js --ci"
+    "test:ci": "node test-extension.js --ci",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:run:chrome": "cypress run --browser chrome",
+    "test:e2e": "playwright test playwright/simple.spec.js",
+    "test:e2e:full": "playwright test playwright/extension.spec.js",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test playwright/simple.spec.js --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "playwright:report": "playwright show-report"
   },
   "keywords": [
     "chrome-extension",
@@ -20,6 +29,9 @@
   "author": "GTM Enterprises LLC",
   "license": "MIT",
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@playwright/test": "^1.57.0",
+    "cypress": "^15.8.2",
+    "nodemon": "^3.0.1",
+    "playwright": "^1.57.0"
   }
 }

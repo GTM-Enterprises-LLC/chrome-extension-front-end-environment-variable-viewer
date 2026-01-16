@@ -2,6 +2,38 @@
 
 All notable changes to the EnvVars Chrome Extension will be documented in this file.
 
+## [3.4.0] - 2026-01-13
+
+### 🎨 UI/UX Improvements
+
+**Tab-Based Navigation:**
+- Converted script search from collapsible panel to dedicated tab
+- Two-tab layout: "📋 Variables" and "🔍 Script Search"
+- Cleaner, more organized interface
+- Scripts load automatically on first tab switch
+
+**Condensed UI:**
+- Reduced padding, margins, and font sizes throughout the extension
+- Smaller header (20px icon, 16px title)
+- Compact tabs (8px padding, 11px font)
+- Smaller buttons (4px padding, 9px font for filters)
+- Tighter spacing between elements (8px gap for env items)
+- More environment variables visible at once without scrolling
+- Improved information density without sacrificing readability
+
+**Header Enhancement:**
+- Added extension icon to popup header
+- Improves brand recognition and visual appeal
+
+### 🐛 Bug Fixes
+
+**Fixed False Positive Detection:**
+- Added comprehensive blacklist for generic JavaScript properties
+- Filters out common properties: name, value, type, id, key, data, and 20+ others
+- Also filters generic values to prevent false matches
+- Prevents detection of common non-environment properties
+- Significantly reduces noise in results for better accuracy
+
 ## [3.3.0] - 2026-01-13
 
 ### ✨ New Features

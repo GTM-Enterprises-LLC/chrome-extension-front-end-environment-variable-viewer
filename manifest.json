@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EnvVars",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Detect environment variables and hardcoded secrets (AWS keys, API tokens, UUIDs) in React, Vue, Svelte, Angular, Vite, Next.js, and other frontend frameworks",
   "permissions": [
     "activeTab",

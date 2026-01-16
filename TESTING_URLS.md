@@ -150,8 +150,11 @@ Test the extension on each production URL and verify:
 ### General Features to Test on Any URL:
 - [ ] Extension icon appears in Chrome toolbar
 - [ ] Click icon opens popup window (500x600px)
+- [ ] **NEW v3.4: Extension icon (48x48) appears in header**
 - [ ] Gradient header displays "EnvVars"
 - [ ] Refresh button (🔄) works
+- [ ] **NEW v3.4: Two tabs visible** - "📋 Variables" and "🔍 Script Search"
+- [ ] **NEW v3.4: Variables tab is active by default**
 - [ ] Search box filters variables in real-time
 - [ ] Filter buttons highlight when active
 - [ ] Filter buttons are compact (smaller font size)
@@ -165,6 +168,7 @@ Test the extension on each production URL and verify:
 - [ ] **NEW v3.3: Secrets show full values** (no truncation)
 - [ ] Variable values are displayed correctly
 - [ ] Scrolling works smoothly for long lists
+- [ ] **NEW v3.4: No false positive "name" / "value" detection**
 
 ### Secret Detection Features:
 - [ ] 🔐 Secrets button has warning color (yellow/orange)
@@ -191,12 +195,14 @@ Test the extension on each production URL and verify:
 - [ ] Special characters are properly escaped
 - [ ] File downloads as ".env" (no extension issue)
 
-### Script Search Features (NEW in v3.2.0):
-- [ ] "🔍 Search Scripts" button appears below filter buttons
-- [ ] Clicking button expands/collapses search panel
+### Script Search Features (NEW in v3.4.0 - Tab-Based):
+- [ ] **NEW v3.4: "🔍 Script Search" tab appears** in tab navigation
+- [ ] **NEW v3.4: Clicking tab switches to search interface**
+- [ ] **NEW v3.4: Tab button highlights when active**
+- [ ] **NEW v3.4: Search input is prominent** (not collapsible)
 - [ ] Panel shows "Loading page scripts..." when first opened
 - [ ] Panel loads and shows count (e.g., "Loaded 5 script(s)")
-- [ ] Search input field appears in panel
+- [ ] Search input field appears in tab
 - [ ] Typing search term (2+ chars) triggers search
 - [ ] Results show file name (📄 icon)
 - [ ] Results show match count per file
@@ -208,6 +214,7 @@ Test the extension on each production URL and verify:
 - [ ] "No matches found" message for no results
 - [ ] Searches both inline and external scripts
 - [ ] Results update as you type (live search)
+- [ ] **NEW v3.4: Switching between tabs preserves search results**
 
 ---
 
@@ -238,24 +245,26 @@ Test for these potential issues:
 
 ---
 
-## 📸 Screenshot Locations (v3.2.0)
+## 📸 Screenshot Locations (v3.4.0)
 
 For Chrome Web Store listing, capture these updated screenshots:
 
-1. **Main Interface with Icons**: http://localhost:4173 (Vite demo showing new icon popovers)
-2. **Script Search Feature**: http://localhost:3002 (React with search panel open and results)
+1. **Main Interface with Tabs**: http://localhost:4173 (Vite demo showing new tab navigation)
+2. **Script Search Tab**: http://localhost:3002 (React with search tab active and results)
 3. **Secrets Warning**: http://localhost:5184 (Multicloud with banner and icons)
-4. **Framework Filters (Compact)**: http://localhost:8081 (Vue with new smaller filter buttons)
-5. **Search & Export**: http://localhost:8082 (Svelte with variable search)
+4. **Framework Filters (Compact)**: http://localhost:8081 (Vue with filter buttons)
+5. **Copy & Export Features**: http://localhost:8082 (Svelte with copy buttons and export options)
 6. **React Detection**: http://localhost:3002 (React with all 9 vars and icons)
 7. **Secret Filter View**: http://localhost:5185 (Payment APIs, secrets filter active)
-8. **Icon Popover in Action**: http://localhost:8083 (Angular - hover over icon showing popover)
+8. **Header with Icon**: http://localhost:8083 (Angular - showing header icon)
 
 ### Screenshot Guidelines:
-- Show the **new icon popovers** (📦📜🪟⚠️) prominently
-- Capture **script search panel** expanded with results
-- Highlight **compact button design**
-- Show **popover tooltip** on hover (may need animated GIF or multiple shots)
+- Show the **new tab navigation** (📋 Variables / 🔍 Script Search)
+- Capture **both tabs** in separate screenshots
+- Show **header with extension icon**
+- Highlight **clean tab-based layout**
+- Show **icon popovers** (📦📜🪟⚠️) prominently
+- Capture **script search in dedicated tab**
 - Ensure all **new UI improvements** are visible
 
 ---
@@ -337,8 +346,8 @@ Once all tests pass:
 ---
 
 **Last Updated**: 2026-01-13
-**Version**: 3.3.0
+**Version**: 3.4.0
 **Total Test URLs**: 16 (8 prod + 8 dev)
 **Frameworks Covered**: 8 (React, Vite, Next.js, Vue, Svelte, Angular, Multicloud, Payment APIs)
-**New Features in v3.3.0**: Individual copy buttons, .env export, Full secret values
-**Previous Features**: Icon popovers, Script search, Compact UI
+**New Features in v3.4.0**: Tab-based navigation, Header icon, Fixed false positives
+**Previous Features**: Individual copy buttons, .env export, Icon popovers, Script search

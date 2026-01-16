@@ -9,50 +9,63 @@
 <body>
   <div class="container">
     <header>
-      <h1>Environment Variables</h1>
+      <div class="header-content">
+        <img src="icon48.png" alt="EnvVars" class="header-icon">
+        <h1>EnvVars</h1>
+      </div>
       <button id="refreshBtn" title="Refresh">🔄</button>
     </header>
-    
+
     <div id="loading" class="loading">
       <div class="spinner"></div>
       <p>Scanning for environment variables...</p>
     </div>
-    
+
     <div id="content" class="content hidden">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search variables...">
-      </div>
-
-      <div class="filter-buttons">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="react">REACT_APP</button>
-        <button class="filter-btn" data-filter="vite">VITE</button>
-        <button class="filter-btn" data-filter="next">NEXT_PUBLIC</button>
-        <button class="filter-btn" data-filter="vue">VUE_APP</button>
-        <button class="filter-btn" data-filter="node">NODE_ENV</button>
-        <button class="filter-btn filter-secrets" data-filter="secrets">🔐 Secrets</button>
-      </div>
-
-      <div id="secretsWarning" class="secrets-warning hidden">
-        ⚠️ <strong>Hardcoded secrets detected!</strong> These should never be in frontend code.
-      </div>
-
-      <!-- Script Search Feature -->
-      <div class="script-search-section">
-        <button id="toggleScriptSearch" class="toggle-search-btn">
-          🔍 Search Scripts
+      <!-- Tab Navigation -->
+      <div class="tab-navigation">
+        <button class="tab-btn active" data-tab="variables">
+          📋 Variables
         </button>
-        <div id="scriptSearchPanel" class="script-search-panel hidden">
-          <input type="text" id="scriptSearchInput" placeholder="Search in page scripts...">
-          <div id="scriptSearchResults" class="script-search-results"></div>
+        <button class="tab-btn" data-tab="search">
+          🔍 Script Search
+        </button>
+      </div>
+
+      <!-- Variables Tab -->
+      <div id="variablesTab" class="tab-content active">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Search variables...">
+        </div>
+
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="react">REACT_APP</button>
+          <button class="filter-btn" data-filter="vite">VITE</button>
+          <button class="filter-btn" data-filter="next">NEXT_PUBLIC</button>
+          <button class="filter-btn" data-filter="vue">VUE_APP</button>
+          <button class="filter-btn" data-filter="node">NODE_ENV</button>
+          <button class="filter-btn filter-secrets" data-filter="secrets">🔐 Secrets</button>
+        </div>
+
+        <div id="secretsWarning" class="secrets-warning hidden">
+          ⚠️ <strong>Hardcoded secrets detected!</strong> These should never be in frontend code.
+        </div>
+
+        <div id="envVars" class="env-vars"></div>
+
+        <div id="noVars" class="no-vars hidden">
+          <p>No environment variables detected.</p>
+          <small>This extension looks for variables from React, Vite, Next.js, Vue, Nuxt, and other frameworks.</small>
         </div>
       </div>
 
-      <div id="envVars" class="env-vars"></div>
-      
-      <div id="noVars" class="no-vars hidden">
-        <p>No environment variables detected.</p>
-        <small>This extension looks for variables from React, Vite, Next.js, Vue, Nuxt, and other frameworks.</small>
+      <!-- Script Search Tab -->
+      <div id="searchTab" class="tab-content">
+        <div class="script-search-section">
+          <input type="text" id="scriptSearchInput" class="search-input-large" placeholder="Search in page scripts...">
+          <div id="scriptSearchResults" class="script-search-results"></div>
+        </div>
       </div>
     </div>
     
