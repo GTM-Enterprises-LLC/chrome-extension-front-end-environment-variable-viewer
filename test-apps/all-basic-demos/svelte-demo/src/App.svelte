@@ -31,6 +31,15 @@
   </div>
   <h1>Vite + Svelte</h1>
 
+  <div class="env-display">
+    <h2>Environment Variables</h2>
+    {#each Object.entries(envVars) as [key, value]}
+      <div>
+        <strong>{key}:</strong> {value}
+      </div>
+    {/each}
+  </div>
+
   <div class="card">
     <Counter />
   </div>

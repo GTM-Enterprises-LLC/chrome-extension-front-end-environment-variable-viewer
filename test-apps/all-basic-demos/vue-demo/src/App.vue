@@ -32,7 +32,12 @@ console.log('Vue Environment Variables:', envVars)
       </nav>
     </div>
   </header>
-
+  <div class="env-display">
+    <h2>Environment Variables</h2>
+    <div v-for="(value, key) in envVars" :key="key">
+      <strong>{{key}}:</strong> {{value}}
+    </div>
+  </div>
   <RouterView />
 </template>
 
