@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>React Environment Viewer</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -68,18 +70,33 @@
         </div>
       </div>
     </div>
-    
+
     <div id="error" class="error hidden">
       <p>Unable to access page content. Make sure you're on a valid webpage.</p>
     </div>
-    
-    <footer>
+
+    <footer class="action-footer">
       <button id="copyBtn" class="btn-copy">Copy All</button>
       <button id="exportBtn" class="btn-export">Export JSON</button>
       <button id="exportEnvBtn" class="btn-env">Export .env</button>
     </footer>
+
+    <!-- Donation Footer -->
+    <div class="donate-footer">
+      <div class="donate-left">
+        <img
+          src="https://gtmenterprisesllc.com//images/logo.6be28ab05fa94bd052b668fd3cc5a13ed496619ee7b3212d9f5949ee7bde5427.png"
+          alt="" class="footer-logo">
+        <span class="copyright">© 2026 <a href="https://gtmenterprisesllc.com" target="_blank" rel="noopener">GTM
+            Enterprises LLC</a></span>
+      </div>
+      <a href="https://donate.stripe.com/" target="_blank" rel="noopener" class="donate-btn" id="donateBtn">
+        ❤️ Donate
+      </a>
+    </div>
   </div>
-  
+
   <script src="popup.js"></script>
 </body>
+
 </html>

@@ -340,7 +340,8 @@ header h1 {
   display: none !important;
 }
 
-footer {
+/* Action Footer (buttons) */
+.action-footer {
   border-top: 1px solid #e0e0e0;
   padding: 8px 16px;
   display: flex;
@@ -348,7 +349,7 @@ footer {
   background: #fafafa;
 }
 
-footer button {
+.action-footer button {
   flex: 1;
   padding: 6px 8px;
   border: none;
@@ -386,8 +387,80 @@ footer button {
   background: #dd6b20;
 }
 
-footer button:active {
+.action-footer button:active {
   transform: scale(0.98);
+}
+
+/* Donation Footer */
+.donate-footer {
+  height: 28px;
+  border-top: 1px solid #e8e8e8;
+  background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 11px;
+  color: #666;
+}
+
+.donate-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.footer-logo {
+  width: 14px;
+  height: 14px;
+  padding: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 3px;
+  object-fit: contain;
+}
+
+.copyright {
+  font-size: 10px;
+  color: #888;
+  white-space: nowrap;
+}
+
+.copyright a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.copyright a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.donate-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(255, 107, 107, 0.3);
+}
+
+.donate-btn:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #e04a5e 100%);
+  box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
+  transform: translateY(-1px);
+}
+
+.donate-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(255, 107, 107, 0.3);
 }
 
 /* Scrollbar styling */
