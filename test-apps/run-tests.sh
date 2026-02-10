@@ -3,7 +3,7 @@
 # Helper script to run test apps with Docker Compose
 # Usage: ./run-tests.sh [command] [options]
 
-COMPOSE_FILE="/Users/steve/Code/Projects/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/test-apps/docker-compose.yml"
+COMPOSE_FILE="./test-apps/docker-compose.yml"
 
 case "$1" in
   "dev")
