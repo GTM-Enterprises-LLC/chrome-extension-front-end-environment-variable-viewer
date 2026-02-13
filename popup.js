@@ -114,16 +114,57 @@ function extractEnvVars() {
     }
   }
   
-  // Angular: Check for ng object
+  // Angular: Check for ng object and environment variables
   if (window.ng && window.ng.probe) {
-    // Angular often uses injected config services
-    // This is a placeholder as Angular env detection is framework-specific
+    try {
+      const components = document.querySelectorAll('[ng-version]');
+      components.forEach(component => {
+        const debugElement = window.ng.probe(component);
+        if (debugElement && debugElement.componentInstance) {
+          const instance = debugElement.componentInstance;
+          if (instance.envVars && typeof instance.envVars === 'object') {
+            Object.keys(instance.envVars).forEach(key => {
+              if (!envVars[key]) {
+                envVars[key] = {
+                  value: instance.envVars[key],
+                  source: 'Angular component'
+                };
+              }
+            });
+          }
+          if (instance.environment && typeof instance.environment === 'object') {
+            Object.keys(instance.environment).forEach(key => {
+              if (!envVars[key]) {
+                envVars[key] = {
+                  value: instance.environment[key],
+                  source: 'Angular environment'
+                };
+              }
+            });
+          }
+        }
+      });
+    } catch (e) {
+      // Angular debug mode might not be available in production
+    }
+  }
+
+  // Angular: Check for common global environment object
+  if (window.environment && typeof window.environment === 'object') {
+    Object.keys(window.environment).forEach(key => {
+      if (!envVars[key]) {
+        envVars[key] = {
+          value: window.environment[key],
+          source: 'window.environment (Angular)'
+        };
+      }
+    });
   }
   
   // Method 4: Parse inline and external script content for bundled env vars
   const scripts = document.querySelectorAll('script');
-  scripts.forEach(script => {
-    const content = script.textContent || script.innerHTML;
+
+  const processScriptContent = (content) => {
     if (!content) return;
     
     // All framework prefixes to search for
@@ -282,7 +323,76 @@ function extractEnvVars() {
         source: 'Vite mode'
       };
     }
-    
+
+    // Pattern 12: Angular environment object detection
+    const angularEnvProps = [
+      'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
+      'environmentName', 'environment', 'appVersion', 'version',
+      'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
+      'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
+      'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
+      'debugMode', 'enableLogging', 'logLevel'
+    ];
+
+    angularEnvProps.forEach(prop => {
+      const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
+      const angularMatch1 = content.match(angularPattern1);
+      if (angularMatch1 && !envVars[prop]) {
+        const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
+        if (valueMatch) {
+          envVars[prop] = {
+            value: valueMatch[1],
+            source: 'Angular bundle'
+          };
+        }
+      }
+
+      const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
+      const angularMatch2 = content.match(angularPattern2);
+      if (angularMatch2 && !envVars[prop]) {
+        const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
+        if (valueMatch) {
+          let boolValue = valueMatch[1];
+          if (boolValue === '!0' || boolValue === 'true') boolValue = 'true';
+          if (boolValue === '!1' || boolValue === 'false') boolValue = 'false';
+          envVars[prop] = {
+            value: boolValue,
+            source: 'Angular bundle'
+          };
+        }
+      }
+
+      const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
+      const angularMatch3 = content.match(angularPattern3);
+      if (angularMatch3 && !envVars[prop]) {
+        const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
+        if (valueMatch) {
+          envVars[prop] = {
+            value: valueMatch[1],
+            source: 'Angular bundle'
+          };
+        }
+      }
+    });
+
+    const envVarsObjectMatch = content.match(/envVars\s*=\s*\{([^}]{0,500})\}/);
+    if (envVarsObjectMatch) {
+      const objContent = envVarsObjectMatch[1];
+      angularEnvProps.forEach(prop => {
+        const propPattern = new RegExp(`${prop}\\s*:\\s*(?:["']([^"']+)["']|(!0|!1|true|false)|(\\d+))`, 'i');
+        const propMatch = objContent.match(propPattern);
+        if (propMatch && !envVars[prop]) {
+          let value = propMatch[1] || propMatch[2] || propMatch[3];
+          if (value === '!0' || value === 'true') value = 'true';
+          if (value === '!1' || value === 'false') value = 'false';
+          envVars[prop] = {
+            value: value,
+            source: 'Angular component envVars'
+          };
+        }
+      });
+    }
+
     // Old patterns for explicit assignments (kept for compatibility)
     const envMatches = content.matchAll(/process\.env\.(\w+)\s*=\s*["']([^"']+)["']/g);
     for (const match of envMatches) {
@@ -307,8 +417,33 @@ function extractEnvVars() {
         };
       }
     }
+  };
+
+  // Process inline scripts immediately
+  scripts.forEach(script => {
+    if (!script.src) {
+      const content = script.textContent || script.innerHTML;
+      processScriptContent(content);
+    }
   });
-  
+
+  // Fetch and process external scripts
+  const externalScripts = Array.from(scripts).filter(s => s.src);
+  externalScripts.forEach(script => {
+    try {
+      fetch(script.src)
+        .then(response => response.text())
+        .then(content => {
+          processScriptContent(content);
+        })
+        .catch(err => {
+          console.log('Could not fetch external script:', script.src, err);
+        });
+    } catch (err) {
+      console.log('Error fetching script:', err);
+    }
+  });
+
   // Method 5: Check meta tags
   const metaTags = document.querySelectorAll('meta[name^="env:"], meta[name^="react-env:"]');
   metaTags.forEach(meta => {
@@ -896,6 +1031,59 @@ function parseScriptForEnvVars(content, source) {
       apiKeyCount++;
     }
   }
+
+  // Angular environment object detection
+  const angularEnvProps = [
+    'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
+    'environmentName', 'environment', 'appVersion', 'version',
+    'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
+    'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
+    'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
+    'debugMode', 'enableLogging', 'logLevel'
+  ];
+
+  angularEnvProps.forEach(prop => {
+    const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
+    const angularMatch1 = content.match(angularPattern1);
+    if (angularMatch1 && !envVars[prop]) {
+      const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
+      if (valueMatch) {
+        envVars[prop] = {
+          value: valueMatch[1],
+          source: source + ' (Angular)'
+        };
+      }
+    }
+
+    // Pattern for boolean values: production:!0 or production:true
+    const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
+    const angularMatch2 = content.match(angularPattern2);
+    if (angularMatch2 && !envVars[prop]) {
+      const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
+      if (valueMatch) {
+        let boolValue = valueMatch[1];
+        if (boolValue === '!0' || boolValue.toLowerCase() === 'true') boolValue = 'true';
+        if (boolValue === '!1' || boolValue.toLowerCase() === 'false') boolValue = 'false';
+        envVars[prop] = {
+          value: boolValue,
+          source: source + ' (Angular)'
+        };
+      }
+    }
+
+    // Pattern for numeric values: maxUploadSize:41943040
+    const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
+    const angularMatch3 = content.match(angularPattern3);
+    if (angularMatch3 && !envVars[prop]) {
+      const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
+      if (valueMatch) {
+        envVars[prop] = {
+          value: valueMatch[1],
+          source: source + ' (Angular)'
+        };
+      }
+    }
+  });
 
   return envVars;
 }
