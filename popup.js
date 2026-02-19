@@ -548,8 +548,6 @@ function extractEnvVars() {
         envVars[match[1]] = { value: '(referenced)', source: 'inline script (Next.js process.env ref)' };
       }
     }
-  });
-
   };
 
   // Process inline scripts immediately
