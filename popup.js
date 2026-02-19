@@ -82,22 +82,83 @@ function extractEnvVars() {
     });
   }
   
-  // Next.js: Check for __NEXT_DATA__
-  if (window.__NEXT_DATA__ && window.__NEXT_DATA__.props) {
-    const nextEnv = window.__NEXT_DATA__.props.pageProps?.env || 
-                    window.__NEXT_DATA__.props.env ||
-                    window.__NEXT_DATA__.runtimeConfig;
-    if (nextEnv && typeof nextEnv === 'object') {
-      Object.keys(nextEnv).forEach(key => {
-        if (!envVars[key]) {
-          envVars[key] = {
-            value: nextEnv[key],
-            source: 'Next.js __NEXT_DATA__'
-          };
+  // Next.js: Deep scan __NEXT_DATA__ for environment variables
+  if (window.__NEXT_DATA__) {
+    const nextData = window.__NEXT_DATA__;
+
+    // Helper to recursively scan objects for env-like keys
+    function scanNextDataForEnv(obj, path, depth) {
+      if (!obj || typeof obj !== 'object' || depth > 6) return;
+      try {
+        const keys = Object.keys(obj);
+        for (const key of keys) {
+          const value = obj[key];
+          // Direct match: key starts with NEXT_PUBLIC_
+          if (typeof key === 'string' && key.startsWith('NEXT_PUBLIC_') && value !== undefined && value !== null) {
+            if (!envVars[key]) {
+              envVars[key] = {
+                value: String(value),
+                source: 'Next.js __NEXT_DATA__ (' + path + ')'
+              };
+            }
+          }
+          // Recurse into nested objects/arrays
+          if (value && typeof value === 'object') {
+            scanNextDataForEnv(value, path + '.' + key, depth + 1);
+          }
         }
-      });
+      } catch (e) { /* skip inaccessible properties */ }
     }
+
+    // Scan specific known locations first
+    const knownPaths = [
+      nextData.props?.pageProps?.env,
+      nextData.props?.pageProps,
+      nextData.props?.env,
+      nextData.props,
+      nextData.runtimeConfig,
+      nextData.runtimeConfig?.publicRuntimeConfig,
+      nextData.runtimeConfig?.serverRuntimeConfig,
+      nextData.query,
+    ];
+    for (const obj of knownPaths) {
+      if (obj && typeof obj === 'object') {
+        scanNextDataForEnv(obj, '__NEXT_DATA__', 0);
+      }
+    }
+
+    // Full recursive scan of the entire __NEXT_DATA__ tree
+    scanNextDataForEnv(nextData, '__NEXT_DATA__', 0);
   }
+
+  // Next.js App Router: Parse RSC flight data from self.__next_f.push() scripts
+  const allScriptTags = document.querySelectorAll('script');
+  allScriptTags.forEach(script => {
+    const content = script.textContent || '';
+    if (content.includes('self.__next_f.push')) {
+      // Extract flight data strings
+      const flightMatches = content.matchAll(/self\.__next_f\.push\(\[\d+,"((?:[^"\\]|\\.)*)"\]\)/g);
+      for (const fm of flightMatches) {
+        try {
+          const flightData = fm[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+          // Look for NEXT_PUBLIC_ references in flight data
+          const envInFlight = flightData.matchAll(/(NEXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"'\\]+)["']/g);
+          for (const em of envInFlight) {
+            if (!envVars[em[1]]) {
+              envVars[em[1]] = { value: em[2], source: 'Next.js RSC flight data' };
+            }
+          }
+          // Also look for key-value JSON patterns in flight data
+          const jsonInFlight = flightData.matchAll(/"(NEXT_PUBLIC_[\w_]+)"\s*:\s*"([^"\\]+)"/g);
+          for (const jm of jsonInFlight) {
+            if (!envVars[jm[1]]) {
+              envVars[jm[1]] = { value: jm[2], source: 'Next.js RSC flight data' };
+            }
+          }
+        } catch (e) { /* skip malformed flight data */ }
+      }
+    }
+  });
   
   // Nuxt.js: Check for __NUXT__
   if (window.__NUXT__ && window.__NUXT__.config) {
@@ -307,6 +368,76 @@ function extractEnvVars() {
         };
       }
     }
+
+    // Next.js: Decode inline source maps to find env var names and values.
+    // Search for source maps directly in the script content
+    const sourceMapPattern = /\/\/# sourceMappingURL=data:application\/json[^,]*;base64,([A-Za-z0-9+\/=]+)/g;
+    for (const smMatch of content.matchAll(sourceMapPattern)) {
+      try {
+        const decoded = atob(smMatch[1]);
+        let smJson;
+        try { smJson = JSON.parse(decoded); } catch (e) { continue; }
+        if (!smJson || !smJson.sourcesContent) continue;
+
+        // Compiled code is everything before the source map
+        const compiledCode = content.substring(0, smMatch.index);
+
+        for (const origSrc of smJson.sourcesContent) {
+          if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
+
+          // Label pattern: 'Label': process.env.NEXT_PUBLIC_X
+          const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+          for (const ref of origSrc.matchAll(labelPat)) {
+            const label = ref[1];
+            const envName = ref[2];
+            if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+            const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
+              const m = compiledCode.match(pat);
+              if (m && m[1]) {
+                envVars[envName] = { value: m[1], source: 'inline script (Next.js)' };
+              }
+            } catch (e) { /* skip */ }
+          }
+
+          // Context matching: use surrounding text to find replacement values
+          const contextPat = /(.{0,60})process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+          for (const ref of origSrc.matchAll(contextPat)) {
+            const envName = ref[2];
+            if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+            const before = ref[1].replace(/\s+$/, '');
+            const anchor = before.slice(-25);
+            if (anchor.length >= 3) {
+              const escapedAnchor = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              try {
+                const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
+                const m = compiledCode.match(pat);
+                if (m && m[1]) {
+                  envVars[envName] = { value: m[1], source: 'inline script (Next.js)' };
+                }
+              } catch (e) { /* skip */ }
+            }
+          }
+
+          // Register remaining as detected
+          const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+          for (const ref of origSrc.matchAll(anyPat)) {
+            if (!envVars[ref[1]]) {
+              envVars[ref[1]] = { value: '(detected in source)', source: 'inline script (Next.js source map)' };
+            }
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // Next.js: Find process.env.NEXT_PUBLIC_* references not yet replaced
+    const procEnvMatches = content.matchAll(/process\.env\.(NEXT_PUBLIC_[\w_]+)/g);
+    for (const match of procEnvMatches) {
+      if (!envVars[match[1]]) {
+        envVars[match[1]] = { value: '(referenced)', source: 'inline script (Next.js process.env ref)' };
+      }
+    }
   });
   
   // Method 5: Check meta tags
@@ -400,12 +531,13 @@ async function loadEnvironmentVariables() {
       target: { tabId: tab.id },
       func: () => {
         const urls = new Set();
+        const baseUrl = window.location.origin;
 
         // Get regular script tags
         const scripts = Array.from(document.querySelectorAll('script[src]'));
         scripts.forEach(script => {
           const src = script.src;
-          if (src && (src.startsWith('http') || src.startsWith('/'))) {
+          if (src && !src.startsWith('chrome-extension://')) {
             urls.add(src);
           }
         });
@@ -421,14 +553,12 @@ async function loadEnvironmentVariables() {
             const importMatches = script.textContent.matchAll(/import\s+.*?from\s+['"](.*?)['"]/g);
             for (const match of importMatches) {
               if (match[1]) {
-                // Convert relative URLs to absolute
                 try {
                   const url = new URL(match[1], window.location.href);
                   urls.add(url.href);
                 } catch (e) {
-                  // If URL construction fails, try as-is
                   if (match[1].startsWith('/')) {
-                    urls.add(match[1]);
+                    urls.add(baseUrl + match[1]);
                   }
                 }
               }
@@ -436,26 +566,88 @@ async function loadEnvironmentVariables() {
           }
         });
 
+        // Get preloaded/modulepreloaded scripts (Next.js, Vite, etc. use these)
+        const preloadLinks = document.querySelectorAll(
+          'link[rel="preload"][as="script"], link[rel="modulepreload"], link[rel="prefetch"][as="script"]'
+        );
+        preloadLinks.forEach(link => {
+          const href = link.href;
+          if (href && !href.startsWith('chrome-extension://')) {
+            urls.add(href);
+          }
+        });
+
+        // Next.js: Discover chunks from __BUILD_MANIFEST
+        if (window.__BUILD_MANIFEST) {
+          try {
+            const manifest = window.__BUILD_MANIFEST;
+            const chunkPaths = new Set();
+            // Collect all chunk paths from all pages
+            Object.keys(manifest).forEach(page => {
+              const chunks = manifest[page];
+              if (Array.isArray(chunks)) {
+                chunks.forEach(chunk => chunkPaths.add(chunk));
+              }
+            });
+            // Convert relative paths to full URLs
+            chunkPaths.forEach(chunkPath => {
+              // Next.js chunks are relative to /_next/
+              const fullUrl = baseUrl + '/_next/' + chunkPath;
+              urls.add(fullUrl);
+            });
+          } catch (e) { /* skip if manifest parsing fails */ }
+        }
+
+        // Next.js: Discover chunks from __BUILD_MANIFEST_CB (async chunks)
+        if (window.__NEXT_DATA__?.buildId) {
+          // Also check for common Next.js chunk patterns in existing script tags
+          const nextScripts = document.querySelectorAll('script[src*="/_next/"]');
+          nextScripts.forEach(script => {
+            if (script.src) urls.add(script.src);
+          });
+        }
+
         return Array.from(urls);
       }
     });
 
     const scriptUrls = scriptUrlsResult[0]?.result || [];
     
-    // Fetch and parse external scripts
-    for (const url of scriptUrls.slice(0, 10)) { // Limit to first 10 scripts to avoid performance issues
-      try {
-        const response = await fetch(url);
-        const scriptContent = await response.text();
-        
-        // Parse the fetched script content
-        const vars = parseScriptForEnvVars(scriptContent, 'external script: ' + url.split('/').pop());
-        Object.assign(allEnvVars, vars);
-      } catch (error) {
-        console.log('Could not fetch script:', url, error);
+    // Detect if this is a Next.js app (needs more chunks scanned)
+    const isNextJs = scriptUrls.some(url => url.includes('/_next/'));
+    const scriptLimit = isNextJs ? 50 : 20;
+
+    // Fetch and parse external scripts in parallel batches for better performance
+    const urlsToFetch = scriptUrls.slice(0, scriptLimit);
+    const batchSize = 10;
+    for (let i = 0; i < urlsToFetch.length; i += batchSize) {
+      const batch = urlsToFetch.slice(i, i + batchSize);
+      const fetchPromises = batch.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          const scriptContent = await response.text();
+          return { url, content: scriptContent };
+        } catch (error) {
+          console.log('Could not fetch script:', url, error);
+          return null;
+        }
+      });
+      const results2 = await Promise.all(fetchPromises);
+      for (const result of results2) {
+        if (result && result.content) {
+          const vars = parseScriptForEnvVars(result.content, 'external script: ' + result.url.split('/').pop());
+          // Only add vars that are new or upgrade "(detected in source)" placeholders
+          for (const [key, val] of Object.entries(vars)) {
+            if (!allEnvVars[key] ||
+                (allEnvVars[key].value === '(detected in source)' && val.value !== '(detected in source)') ||
+                (allEnvVars[key].value === '(referenced)' && val.value !== '(referenced)' && val.value !== '(detected in source)')) {
+              allEnvVars[key] = val;
+            }
+          }
+        }
       }
     }
-    
+
     if (Object.keys(allEnvVars).length > 0) {
       applyFilters();
       showContent();
@@ -470,8 +662,64 @@ async function loadEnvironmentVariables() {
 
 function parseScriptForEnvVars(content, source) {
   const envVars = {};
-  
+
   if (!content) return envVars;
+
+  // Save original content before eval pre-processing (for per-eval Next.js detection)
+  const originalContent = content;
+
+  // Pre-process: Extract and unescape eval() strings so patterns can match their contents.
+  // In Next.js/webpack dev mode, compiled code is wrapped in:
+  //   eval("...escaped code...") OR eval(__webpack_require__.ts("...escaped code..."))
+  // where quotes are escaped as \" and newlines as \n, preventing regex patterns from matching.
+  if (content.includes('eval(')) {
+    let extraContent = '';
+    let searchPos = 0;
+    while (searchPos < content.length) {
+      // Find eval( then scan forward to find the first " or ' which starts the string
+      const evalIdx = content.indexOf('eval(', searchPos);
+      if (evalIdx === -1) break;
+      // Scan forward from eval( to find the opening quote (skip wrapper functions like __webpack_require__.ts()
+      let quotePos = evalIdx + 5;
+      let quoteChar = '';
+      while (quotePos < content.length && quotePos < evalIdx + 80) {
+        if (content[quotePos] === '"' || content[quotePos] === "'") {
+          quoteChar = content[quotePos];
+          break;
+        }
+        quotePos++;
+      }
+      if (!quoteChar) { searchPos = evalIdx + 5; continue; }
+      const codeStart = quotePos + 1;
+      // Walk forward to find the unescaped closing quote
+      let pos = codeStart;
+      let isEscaped = false;
+      while (pos < content.length) {
+        if (isEscaped) { isEscaped = false; pos++; continue; }
+        if (content[pos] === '\\') { isEscaped = true; pos++; continue; }
+        if (content[pos] === quoteChar) break;
+        pos++;
+      }
+      if (pos < content.length && pos > codeStart) {
+        const rawEval = content.substring(codeStart, pos);
+        // Only process eval strings that might contain env vars (skip tiny ones)
+        if (rawEval.length > 100) {
+          const unescaped = rawEval.replace(/\\(.)/g, function(_m, c) {
+            switch(c) {
+              case 'n': return '\n'; case 't': return '\t'; case 'r': return '\r';
+              case '"': return '"'; case "'": return "'"; case '\\': return '\\';
+              default: return c;
+            }
+          });
+          extraContent += '\n' + unescaped;
+        }
+      }
+      searchPos = pos + 1;
+    }
+    if (extraContent) {
+      content = content + extraContent;
+    }
+  }
   
   // All framework prefixes
   const prefixPatterns = [
@@ -819,6 +1067,210 @@ function parseScriptForEnvVars(content, source) {
     const envKey = credentialMap[name] || name;
     if (!envVars[envKey]) {
       envVars[envKey] = { value, source: source + ' (name-value pair)' };
+    }
+  }
+
+  // Pattern 15b: Next.js - Process each eval("...") string independently.
+  {
+    let evalSearchPos = 0;
+    while (evalSearchPos < originalContent.length) {
+      // Find eval( - handles both eval("...") and eval(__webpack_require__.ts("..."))
+      const evalIdx = originalContent.indexOf('eval(', evalSearchPos);
+      if (evalIdx === -1) break;
+
+      // Scan forward from eval( to find the opening quote (within 80 chars to skip wrapper fns)
+      let quotePos = evalIdx + 5;
+      let quoteChar = '';
+      while (quotePos < originalContent.length && quotePos < evalIdx + 80) {
+        if (originalContent[quotePos] === '"' || originalContent[quotePos] === "'") {
+          quoteChar = originalContent[quotePos];
+          break;
+        }
+        quotePos++;
+      }
+      if (!quoteChar) { evalSearchPos = evalIdx + 5; continue; }
+
+      const codeStart = quotePos + 1;
+      let pos = codeStart;
+      let isEscaped = false;
+      while (pos < originalContent.length) {
+        if (isEscaped) { isEscaped = false; pos++; continue; }
+        if (originalContent[pos] === '\\') { isEscaped = true; pos++; continue; }
+        if (originalContent[pos] === quoteChar) break;
+        pos++;
+      }
+
+      if (pos >= originalContent.length || pos <= codeStart) {
+        evalSearchPos = pos + 1;
+        continue;
+      }
+
+      const rawEval = originalContent.substring(codeStart, pos);
+      evalSearchPos = pos + 1;
+      if (rawEval.length < 200) continue;
+
+      const unescaped = rawEval.replace(/\\(.)/g, function(_m, c) {
+        switch (c) {
+          case 'n': return '\n'; case 't': return '\t'; case 'r': return '\r';
+          case '"': return '"'; case "'": return "'"; case '\\': return '\\';
+          default: return c;
+        }
+      });
+
+      const smMatch = unescaped.match(/\/\/# sourceMappingURL=data:application\/json[^,]*;base64,([A-Za-z0-9+\/=]+)/);
+      if (!smMatch) continue;
+
+      const compiledCode = unescaped.substring(0, smMatch.index);
+      if (!compiledCode) continue;
+
+      let sourceMapJson;
+      try {
+        const decoded = atob(smMatch[1]);
+        sourceMapJson = JSON.parse(decoded);
+      } catch (e) {
+        continue;
+      }
+
+      if (!sourceMapJson || !sourceMapJson.sourcesContent) continue;
+
+      for (const origSrc of sourceMapJson.sourcesContent) {
+        if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
+
+        // Strategy 1: Label pattern
+        const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+        for (const ref of origSrc.matchAll(labelPat)) {
+          const label = ref[1];
+          const envName = ref[2];
+          if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+
+          const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          try {
+            const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
+            const m = compiledCode.match(pat);
+            if (m && m[1]) {
+              envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
+            }
+          } catch (e) { /* skip */ }
+        }
+
+        // Strategy 2: Variable assignment
+        const assignPat = /(?:const|let|var)\s+(\w+)\s*=\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+        for (const ref of origSrc.matchAll(assignPat)) {
+          const varName = ref[1];
+          const envName = ref[2];
+          if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+          const safeVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          try {
+            const pat = new RegExp('(?:const|let|var)?\\s*' + safeVar + '\\s*=\\s*["\']([^"\']{1,500})["\']');
+            const m = compiledCode.match(pat);
+            if (m && m[1]) {
+              envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
+            }
+          } catch (e) { /* skip */ }
+        }
+
+        // Strategy 3: Context matching
+        const contextPat = /(.{0,60})process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+        for (const ref of origSrc.matchAll(contextPat)) {
+          const envName = ref[2];
+          if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+          const before = ref[1].replace(/\s+$/, '');
+          const anchor = before.slice(-25);
+          if (anchor.length >= 3) {
+            const escapedAnchor = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
+              const m = compiledCode.match(pat);
+              if (m && m[1]) {
+                envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
+              }
+            } catch (e) { /* skip */ }
+          }
+        }
+
+        // Register remaining
+        const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+        for (const ref of origSrc.matchAll(anyPat)) {
+          if (!envVars[ref[1]]) {
+            envVars[ref[1]] = { value: '(detected in source)', source: source + ' (Next.js source map)' };
+          }
+        }
+      }
+    }
+  }
+
+  // Pattern 15b-fallback: Non-eval source maps (production builds, turbopack)
+  {
+    const smPattern = /\/\/# sourceMappingURL=data:application\/json[^,]*;base64,([A-Za-z0-9+\/=]+)/g;
+    for (const match of content.matchAll(smPattern)) {
+      try {
+        const decoded = atob(match[1]);
+        let smJson;
+        try { smJson = JSON.parse(decoded); } catch (e) { continue; }
+        if (!smJson || !smJson.sourcesContent) continue;
+
+        const compiledCode = content.substring(Math.max(0, match.index - 200000), match.index);
+
+        for (const origSrc of smJson.sourcesContent) {
+          if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
+
+          const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+          for (const ref of origSrc.matchAll(labelPat)) {
+            const label = ref[1];
+            const envName = ref[2];
+            if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+
+            const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
+              const m = compiledCode.match(pat);
+              if (m && m[1]) {
+                envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
+              }
+            } catch (e) { /* skip */ }
+          }
+
+          const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+          for (const ref of origSrc.matchAll(anyPat)) {
+            if (!envVars[ref[1]]) {
+              envVars[ref[1]] = { value: '(detected in source)', source: source + ' (Next.js source map)' };
+            }
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+  }
+
+  // Pattern 15c: Next.js - process.env.NEXT_PUBLIC_* that wasn't replaced (edge cases)
+  const processEnvNextPattern = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+  for (const match of content.matchAll(processEnvNextPattern)) {
+    const key = match[1];
+    if (!envVars[key]) {
+      envVars[key] = { value: '(referenced)', source: source + ' (Next.js process.env ref)' };
+    }
+  }
+
+  // Pattern 15d: Next.js turbopack module format
+  // Turbopack uses a different module wrapper: [id, {...}, function(module, exports, require) { ... }]
+  const turbopackEnvPattern = /\["NEXT_PUBLIC_([\w_]+)"\]\s*[=:]\s*["']([^"']+)["']/g;
+  for (const match of content.matchAll(turbopackEnvPattern)) {
+    const key = 'NEXT_PUBLIC_' + match[1];
+    const value = match[2];
+    if (!envVars[key]) {
+      envVars[key] = { value, source: source + ' (Next.js turbopack)' };
+    }
+  }
+
+  // Pattern 15e: Next.js edge runtime / middleware env pattern
+  // Matches: env:{"NEXT_PUBLIC_X":"value"} or "env":{...}
+  const nextEnvObjPattern = /["']?env["']?\s*:\s*\{([^}]*NEXT_PUBLIC_[^}]+)\}/g;
+  for (const match of content.matchAll(nextEnvObjPattern)) {
+    const objContent = match[1];
+    const kvPattern = /["']?(NEXT_PUBLIC_[\w_]+)["']?\s*:\s*["']([^"']+)["']/g;
+    for (const kv of objContent.matchAll(kvPattern)) {
+      if (!envVars[kv[1]]) {
+        envVars[kv[1]] = { value: kv[2], source: source + ' (Next.js env object)' };
+      }
     }
   }
 
