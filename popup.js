@@ -174,8 +174,8 @@ function extractEnvVars() {
       });
     }
   }
-  
-  // Angular: Check for ng object and environment variables
+
+  // Angular: Check for ng object
   if (window.ng && window.ng.probe) {
     try {
       const components = document.querySelectorAll('[ng-version]');
@@ -609,8 +609,45 @@ function extractEnvVars() {
 let allEnvVars = {};
 let filteredVars = {};
 let currentFilter = 'all';
+let currentFrameworkFilter = '';
+
+const THEME_STORAGE_KEY = 'envViewerTheme';
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  const sunEl = document.querySelector('.theme-icon.theme-sun');
+  const moonEl = document.querySelector('.theme-icon.theme-moon');
+  if (sunEl && moonEl) {
+    if (theme === 'dark') {
+      sunEl.classList.add('hidden');
+      moonEl.classList.remove('hidden');
+    } else {
+      sunEl.classList.remove('hidden');
+      moonEl.classList.add('hidden');
+    }
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load saved theme from local storage (persists reliably when popup closes)
+  try {
+    const { [THEME_STORAGE_KEY]: savedTheme } = await chrome.storage.local.get(THEME_STORAGE_KEY);
+    const theme = savedTheme === 'dark' ? 'dark' : 'light';
+    applyTheme(theme);
+  } catch (_) {
+    applyTheme('light');
+  }
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    // Fire-and-forget: write immediately so it persists even if user closes popup right after
+    chrome.storage.local.set({ [THEME_STORAGE_KEY]: next }).catch(() => { });
+  });
+
   loadEnvironmentVariables();
 
   // Set up event listeners
@@ -622,28 +659,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Event delegation for copy value buttons
   document.getElementById('envVars').addEventListener('click', (e) => {
-    if (e.target.classList.contains('copy-value-btn')) {
-      const value = e.target.getAttribute('data-value');
-      navigator.clipboard.writeText(value).then(() => {
-        const originalText = e.target.textContent;
-        e.target.textContent = '✓';
-        setTimeout(() => {
-          e.target.textContent = originalText;
-        }, 1000);
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-      });
-    }
+    const btn = e.target.closest('.copy-value-btn');
+    if (!btn) return;
+    const value = btn.getAttribute('data-value');
+    navigator.clipboard.writeText(value).then(() => {
+      const copyIcon = '<svg class="icon" focusable="false"><use href="#icon-copy"></use></svg>';
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = copyIcon;
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
   });
 
   // Filter buttons
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      currentFilter = e.target.dataset.filter;
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.filter;
+      currentFrameworkFilter = '';
+      const frameworkSelect = document.getElementById('frameworkSelect');
+      frameworkSelect.value = '';
+      frameworkSelect.classList.remove('active');
       applyFilters();
     });
+  });
+
+  // Framework dropdown — selecting a framework clears button selection and highlights dropdown
+  document.getElementById('frameworkSelect').addEventListener('change', (e) => {
+    const select = e.target;
+    currentFrameworkFilter = select.value || '';
+    if (currentFrameworkFilter) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      currentFilter = '';
+      select.classList.add('active');
+    } else {
+      currentFilter = 'all';
+      document.querySelector('.filter-btn[data-filter="all"]')?.classList.add('active');
+      select.classList.remove('active');
+    }
+    applyFilters();
   });
 });
 
@@ -1524,127 +1584,52 @@ function parseScriptForEnvVars(content, source) {
   return envVars;
 }
 
-// Reusable helper: correlate env var names from source maps with compiled values.
-function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
-  const envVars = {};
-  if (!sourceMapJson || !sourceMapJson.sourcesContent) return envVars;
-
-  for (const origSrc of sourceMapJson.sourcesContent) {
-    if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
-
-    // Strategy 1: Label pattern - 'Label': process.env.NEXT_PUBLIC_X
-    const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
-    for (const ref of origSrc.matchAll(labelPat)) {
-      const label = ref[1];
-      const envName = ref[2];
-      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
-      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      try {
-        const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
-        const m = compiledCode.match(pat);
-        if (m && m[1]) {
-          envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
-        }
-      } catch (e) { /* skip */ }
-    }
-
-    // Strategy 2: Variable assignment - const x = process.env.NEXT_PUBLIC_X
-    const assignPat = /(?:const|let|var)\s+(\w+)\s*=\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
-    for (const ref of origSrc.matchAll(assignPat)) {
-      const varName = ref[1];
-      const envName = ref[2];
-      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
-      const safeVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      try {
-        const pat = new RegExp('(?:const|let|var)?\\s*' + safeVar + '\\s*=\\s*["\']([^"\']{1,500})["\']');
-        const m = compiledCode.match(pat);
-        if (m && m[1]) {
-          envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
-        }
-      } catch (e) { /* skip */ }
-    }
-
-    // Strategy 3: Context matching - use surrounding text to find replacement values
-    const contextPat = /(.{0,60})process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
-    for (const ref of origSrc.matchAll(contextPat)) {
-      const envName = ref[2];
-      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
-      const before = ref[1].replace(/\s+$/, '');
-      const anchor = before.slice(-25);
-      if (anchor.length >= 3) {
-        const escapedAnchor = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        try {
-          const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
-          const m = compiledCode.match(pat);
-          if (m && m[1]) {
-            envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
-          }
-        } catch (e) { /* skip */ }
-      }
-    }
-
-    // Fallback: Register remaining as detected
-    const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
-    for (const ref of origSrc.matchAll(anyPat)) {
-      if (!envVars[ref[1]]) {
-        envVars[ref[1]] = { value: '(detected in source)', source: source + ' (Next.js source map)' };
-      }
-    }
+function includeByFramework(key, framework) {
+  if (!framework) return true;
+  switch (framework) {
+    case 'react': return key.startsWith('REACT_APP_') || key === 'REACT_ENV';
+    case 'vite': return key.startsWith('VITE_') || key === 'MODE';
+    case 'next': return key.startsWith('NEXT_PUBLIC_');
+    case 'vue': return key.startsWith('VUE_APP_');
+    case 'nuxt': return key.startsWith('NUXT_PUBLIC_');
+    case 'gatsby': return key.startsWith('GATSBY_');
+    default: return true;
   }
-  return envVars;
 }
 
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
 
-  // Apply filter
   filteredVars = Object.keys(allEnvVars).reduce((acc, key) => {
-    let includeByFilter = false;
-
-    switch (currentFilter) {
-      case 'all':
-        includeByFilter = true;
-        break;
-      case 'react':
-        includeByFilter = key.startsWith('REACT_APP_') || key === 'REACT_ENV';
-        break;
-      case 'vite':
-        includeByFilter = key.startsWith('VITE_') || key === 'MODE';
-        break;
-      case 'next':
-        includeByFilter = key.startsWith('NEXT_PUBLIC_');
-        break;
-      case 'vue':
-        includeByFilter = key.startsWith('VUE_APP_');
-        break;
-      case 'nuxt':
-        includeByFilter = key.startsWith('NUXT_PUBLIC_');
-        break;
-      case 'gatsby':
-        includeByFilter = key.startsWith('GATSBY_');
-        break;
-      case 'node':
-        includeByFilter = key === 'NODE_ENV';
-        break;
-      case 'public':
-        includeByFilter = key === 'PUBLIC_URL' || key.includes('PUBLIC');
-        break;
-      case 'secrets':
-        includeByFilter = key.includes('SECRET') || key.includes('ACCESS_KEY') ||
-          key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
-          key.includes('API_KEY');
-        break;
+    let includeByCategory = false;
+    // If a framework is selected, filter only by framework (ignore All/Secrets/NODE_ENV)
+    if (currentFrameworkFilter) {
+      includeByCategory = includeByFramework(key, currentFrameworkFilter);
+    } else {
+      switch (currentFilter) {
+        case 'all':
+          includeByCategory = true;
+          break;
+        case 'secrets':
+          includeByCategory = key.includes('SECRET') || key.includes('ACCESS_KEY') ||
+            key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
+            key.includes('API_KEY');
+          break;
+        case 'node':
+          includeByCategory = key === 'NODE_ENV';
+          break;
+        default:
+          includeByCategory = true;
+      }
     }
 
-    // Apply search
     const includeBySearch = !searchTerm ||
       key.toLowerCase().includes(searchTerm) ||
       String(allEnvVars[key].value).toLowerCase().includes(searchTerm);
 
-    if (includeByFilter && includeBySearch) {
+    if (includeByCategory && includeBySearch) {
       acc[key] = allEnvVars[key];
     }
-
     return acc;
   }, {});
 
@@ -1690,31 +1675,15 @@ function displayEnvironmentVariables() {
       : '(empty)';
     const isEmpty = value === undefined || value === null || value === '';
 
-    // Determine icon based on source
-    let icon = '📄';
-    if (source.includes('external script')) {
-      icon = '📦';
-    } else if (source.includes('inline script') || source.includes('bundled script')) {
-      icon = '📜';
-    } else if (source.includes('window')) {
-      icon = '🪟';
-    } else if (source.includes('hardcoded') || source.includes('DETECTED')) {
-      icon = '⚠️';
-    }
-
     return `
       <div class="env-item">
         <div class="env-key">
           <span>${escapeHtml(key)}</span>
-          <span class="source-icon" title="${escapeHtml(source)}">
-            ${icon}
-            <span class="source-popover">${escapeHtml(source)}</span>
-          </span>
         </div>
         <div class="env-value ${isEmpty ? 'empty' : ''}">
           <span class="value-text">${escapeHtml(displayValue)}</span>
-          <button class="copy-value-btn" data-value="${escapeHtml(displayValue)}" title="Copy value">
-            📋
+          <button class="copy-value-btn" data-value="${escapeHtml(displayValue)}" title="Copy value" type="button">
+            <svg class="icon" focusable="false"><use href="#icon-copy"></use></svg>
           </button>
         </div>
       </div>
@@ -2025,7 +1994,8 @@ function searchInScripts(searchTerm) {
     return `
       <div class="search-result-item">
         <div class="search-result-file" title="${escapeHtml(result.scriptName)}">
-          📄 ${escapeHtml(fileName)}
+          <svg class="icon" focusable="false"><use href="#icon-file"></use></svg>
+          ${escapeHtml(fileName)}
         </div>
         <div class="search-result-matches">
           ${result.matches.length} match${result.matches.length !== 1 ? 'es' : ''}

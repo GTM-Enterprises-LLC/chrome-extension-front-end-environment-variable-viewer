@@ -4,18 +4,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>React Environment Viewer</title>
+  <title>EnvVars – Environment Variable Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
+  <!-- SVG icon definitions (hidden) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">
+    <defs>
+      <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 4v6h-6M1 20v-6h6" />
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+      </symbol>
+      <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </symbol>
+      <symbol id="icon-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </symbol>
+      <symbol id="icon-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+      </symbol>
+      <symbol id="icon-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16.5 9.4 7.55 4.24" />
+        <path
+          d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <path d="m3.27 6.96 8.73 5.05 8.73-5.05" />
+        <path d="M12 12v9.49" />
+      </symbol>
+      <symbol id="icon-script" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M9 13h6M9 17h6" />
+      </symbol>
+      <symbol id="icon-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </symbol>
+      <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M12 18v-6M9 15h6" />
+      </symbol>
+      <symbol id="icon-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path
+          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 6 9 17l-5-5" />
+      </symbol>
+    </defs>
+  </svg>
+
   <div class="container">
-    <header>
+    <header class="header">
       <div class="header-content">
         <img src="icon48.png" alt="EnvVars" class="header-icon">
         <h1>EnvVars</h1>
       </div>
-      <button id="refreshBtn" title="Refresh">🔄</button>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Toggle light/dark mode" aria-label="Toggle theme">
+          <span class="theme-icon theme-sun" aria-hidden="true"><svg class="icon icon-md" focusable="false">
+              <use href="#icon-sun"></use>
+            </svg></span>
+          <span class="theme-icon theme-moon hidden" aria-hidden="true"><svg class="icon icon-md" focusable="false">
+              <use href="#icon-moon"></use>
+            </svg></span>
+        </button>
+        <button id="refreshBtn" class="icon-btn" title="Refresh" aria-label="Refresh"><svg class="icon icon-md"
+            focusable="false">
+            <use href="#icon-refresh"></use>
+          </svg></button>
+      </div>
     </header>
 
     <div id="loading" class="loading">
@@ -23,76 +131,105 @@
       <p>Scanning for environment variables...</p>
     </div>
 
-    <div id="content" class="content hidden">
-      <!-- Tab Navigation -->
-      <div class="tab-navigation">
-        <button class="tab-btn active" data-tab="variables">
-          📋 Variables
-        </button>
-        <button class="tab-btn" data-tab="search">
-          🔍 Script Search
-        </button>
+    <div class="main-scroll">
+      <div id="content" class="content hidden">
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+          <button class="tab-btn active" data-tab="variables">
+            <svg class="icon icon-sm" focusable="false">
+              <use href="#icon-list"></use>
+            </svg>
+            Variables
+          </button>
+          <button class="tab-btn" data-tab="search">
+            <svg class="icon icon-sm" focusable="false">
+              <use href="#icon-search"></use>
+            </svg>
+            Script Search
+          </button>
+        </div>
+
+        <!-- Variables Tab -->
+        <div id="variablesTab" class="tab-content active">
+          <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Search variables...">
+          </div>
+
+          <div class="filter-row">
+            <div class="filter-buttons">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <div class="filter-framework-wrap">
+                <select id="frameworkSelect" class="filter-framework-select" title="Filter by framework">
+                  <option value="">Select Framework</option>
+                  <option value="react">REACT_APP</option>
+                  <option value="vite">VITE</option>
+                  <option value="next">NEXT_PUBLIC</option>
+                  <option value="vue">VUE_APP</option>
+                  <option value="nuxt">NUXT_PUBLIC</option>
+                  <option value="gatsby">GATSBY</option>
+                </select>
+              </div>
+              <button class="filter-btn" data-filter="node">NODE_ENV</button>
+              <button class="filter-btn filter-secrets" data-filter="secrets"><svg class="icon icon-xs"
+                  focusable="false">
+                  <use href="#icon-lock"></use>
+                </svg> Secrets</button>
+            </div>
+
+          </div>
+
+          <div id="secretsWarning" class="secrets-warning hidden">
+            <svg class="icon icon-sm warning-icon" focusable="false">
+              <use href="#icon-warning"></use>
+            </svg>
+            <span><strong>Hardcoded secrets detected!</strong> These should never be in frontend code.</span>
+          </div>
+
+          <div class="env-list-scroll">
+            <div id="envVars" class="env-vars"></div>
+            <div id="noVars" class="no-vars hidden">
+              <p>No environment variables detected.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Script Search Tab -->
+        <div id="searchTab" class="tab-content">
+          <div class="script-search-section">
+            <input type="text" id="scriptSearchInput" class="search-input-large"
+              placeholder="Search in page scripts...">
+            <div id="scriptSearchResults" class="script-search-results scroll-area"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- Variables Tab -->
-      <div id="variablesTab" class="tab-content active">
-        <div class="search-box">
-          <input type="text" id="searchInput" placeholder="Search variables...">
-        </div>
-
-        <div class="filter-buttons">
-          <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="react">REACT_APP</button>
-          <button class="filter-btn" data-filter="vite">VITE</button>
-          <button class="filter-btn" data-filter="next">NEXT_PUBLIC</button>
-          <button class="filter-btn" data-filter="vue">VUE_APP</button>
-          <button class="filter-btn" data-filter="node">NODE_ENV</button>
-          <button class="filter-btn filter-secrets" data-filter="secrets">🔐 Secrets</button>
-        </div>
-
-        <div id="secretsWarning" class="secrets-warning hidden">
-          ⚠️ <strong>Hardcoded secrets detected!</strong> These should never be in frontend code.
-        </div>
-
-        <div id="envVars" class="env-vars"></div>
-
-        <div id="noVars" class="no-vars hidden">
-          <p>No environment variables detected.</p>
-          <small>This extension looks for variables from React, Vite, Next.js, Vue, Nuxt, and other frameworks.</small>
-        </div>
+      <div id="error" class="error hidden">
+        <p>Unable to access page content. Make sure you're on a valid webpage.</p>
       </div>
 
-      <!-- Script Search Tab -->
-      <div id="searchTab" class="tab-content">
-        <div class="script-search-section">
-          <input type="text" id="scriptSearchInput" class="search-input-large" placeholder="Search in page scripts...">
-          <div id="scriptSearchResults" class="script-search-results"></div>
+      <footer class="action-footer">
+        <button id="copyBtn" class="btn-copy">Copy All</button>
+        <button id="exportBtn" class="btn-export">Export JSON</button>
+        <button id="exportEnvBtn" class="btn-env">Export .env</button>
+      </footer>
+
+      <!-- Donation Footer -->
+      <div class="donate-footer">
+        <div class="donate-left">
+          <img
+            src="https://gtmenterprisesllc.com//images/logo.6be28ab05fa94bd052b668fd3cc5a13ed496619ee7b3212d9f5949ee7bde5427.png"
+            alt="" class="footer-logo">
+          <span class="copyright">© 2026 <a href="https://gtmenterprisesllc.com" target="_blank" rel="noopener">GTM
+              Enterprises LLC</a></span>
         </div>
+        <a href="https://buy.stripe.com/dRm5kEd4D0sJ60i7Lc53O00" target="_blank" rel="noopener" class="donate-btn"
+          id="donateBtn">
+          <svg class="icon icon-sm" focusable="false">
+            <use href="#icon-heart"></use>
+          </svg>
+          Donate
+        </a>
       </div>
-    </div>
-
-    <div id="error" class="error hidden">
-      <p>Unable to access page content. Make sure you're on a valid webpage.</p>
-    </div>
-
-    <footer class="action-footer">
-      <button id="copyBtn" class="btn-copy">Copy All</button>
-      <button id="exportBtn" class="btn-export">Export JSON</button>
-      <button id="exportEnvBtn" class="btn-env">Export .env</button>
-    </footer>
-
-    <!-- Donation Footer -->
-    <div class="donate-footer">
-      <div class="donate-left">
-        <img
-          src="https://gtmenterprisesllc.com//images/logo.6be28ab05fa94bd052b668fd3cc5a13ed496619ee7b3212d9f5949ee7bde5427.png"
-          alt="" class="footer-logo">
-        <span class="copyright">© 2026 <a href="https://gtmenterprisesllc.com" target="_blank" rel="noopener">GTM
-            Enterprises LLC</a></span>
-      </div>
-      <a href="https://buy.stripe.com/dRm5kEd4D0sJ60i7Lc53O00" target="_blank" rel="noopener" class="donate-btn" id="donateBtn">
-        ❤️ Donate
-      </a>
     </div>
   </div>
 

@@ -5,7 +5,7 @@
   "description": "Detect exposed environment variables and hardcoded secrets in React, Vue, Angular, Svelte, Next.js, and other frontend frameworks.",
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting","storage"
   ],
   "action": {
     "default_popup": "popup.html",
