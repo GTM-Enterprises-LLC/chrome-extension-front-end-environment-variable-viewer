@@ -441,21 +441,131 @@ async function loadEnvironmentVariables() {
     });
 
     const scriptUrls = scriptUrlsResult[0]?.result || [];
-    
-    // Fetch and parse external scripts
-    for (const url of scriptUrls.slice(0, 10)) { // Limit to first 10 scripts to avoid performance issues
-      try {
-        const response = await fetch(url);
-        const scriptContent = await response.text();
-        
-        // Parse the fetched script content
-        const vars = parseScriptForEnvVars(scriptContent, 'external script: ' + url.split('/').pop());
-        Object.assign(allEnvVars, vars);
-      } catch (error) {
-        console.log('Could not fetch script:', url, error);
+
+    // Fetch external scripts in parallel batches
+    const fetchedScripts = [];
+    const batchSize = 5;
+    const urlsToFetch = scriptUrls.slice(0, 15);
+
+    for (let i = 0; i < urlsToFetch.length; i += batchSize) {
+      const batch = urlsToFetch.slice(i, i + batchSize);
+      const promises = batch.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          const content = await response.text();
+          return { url, content };
+        } catch (e) {
+          return null;
+        }
+      });
+      const results = await Promise.all(promises);
+      for (const result of results) {
+        if (result) fetchedScripts.push(result);
       }
     }
-    
+
+    // Follow ESM import chains (1 level deep) for Vite/Svelte dev mode.
+    const fetchedUrls = new Set(fetchedScripts.map(s => s.url));
+    const importUrls = [];
+    for (const script of fetchedScripts) {
+      const importMatches = script.content.matchAll(/import\s+(?:.*?\s+from\s+)?['"]((?!data:)[^'"]+)['"]/g);
+      for (const match of importMatches) {
+        const importPath = match[1];
+        // Skip CSS, images, and other non-JS assets
+        if (/\.(css|scss|less|png|jpg|svg|gif|woff|ttf|ico)($|\?)/.test(importPath)) continue;
+        try {
+          const importUrl = new URL(importPath, script.url).href;
+          if (!fetchedUrls.has(importUrl)) {
+            fetchedUrls.add(importUrl);
+            importUrls.push(importUrl);
+          }
+        } catch (e) { /* skip invalid URLs */ }
+      }
+    }
+
+    // Fetch imported modules (limit to avoid excessive requests)
+    for (let i = 0; i < Math.min(importUrls.length, 10); i += batchSize) {
+      const batch = importUrls.slice(i, i + batchSize);
+      const promises = batch.map(async (url) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) return null;
+          const content = await response.text();
+          return { url, content };
+        } catch (e) {
+          return null;
+        }
+      });
+      const results = await Promise.all(promises);
+      for (const result of results) {
+        if (result) fetchedScripts.push(result);
+      }
+    }
+
+    // Parse all fetched scripts for env vars using pattern matching
+    for (const script of fetchedScripts) {
+      const vars = parseScriptForEnvVars(script.content, 'external script: ' + script.url.split('/').pop());
+      for (const [key, val] of Object.entries(vars)) {
+        if (!allEnvVars[key]) {
+          allEnvVars[key] = val;
+        }
+      }
+    }
+
+    // Process source maps in fetched scripts for Vite env vars.
+    for (const script of fetchedScripts) {
+      // Check for inline source map (base64) - common in Vite dev mode
+      const inlineSmMatch = script.content.match(
+        /\/\/[#@]\s*sourceMappingURL=data:application\/json;(?:charset=[^;]+;)?base64,([A-Za-z0-9+/=]+)\s*$/m
+      );
+      if (inlineSmMatch) {
+        try {
+          const smJson = JSON.parse(atob(inlineSmMatch[1]));
+          const smVars = processSourceMapForViteEnv(
+            script.content, smJson,
+            'external script: ' + script.url.split('/').pop()
+          );
+          for (const [key, val] of Object.entries(smVars)) {
+            if (!allEnvVars[key] ||
+                allEnvVars[key].value === '(detected in source)' ||
+                allEnvVars[key].value === '(referenced)') {
+              allEnvVars[key] = val;
+            }
+          }
+        } catch (e) { /* skip invalid source maps */ }
+        continue; // Inline source map found, skip external check
+      }
+
+      // Check for external source map reference - common in Vite prod mode
+      const extSmMatch = script.content.match(
+        /\/\/[#@]\s*sourceMappingURL=([^\s]+\.map)\s*$/m
+      );
+      if (extSmMatch && !extSmMatch[1].startsWith('data:')) {
+        try {
+          const mapUrl = new URL(extSmMatch[1], script.url).href;
+          const mapResponse = await fetch(mapUrl);
+          if (mapResponse.ok) {
+            const contentType = mapResponse.headers.get('content-type') || '';
+            if (!contentType.includes('html')) {
+              const mapText = await mapResponse.text();
+              const mapJson = JSON.parse(mapText);
+              const smVars = processSourceMapForViteEnv(
+                script.content, mapJson,
+                'external script: ' + script.url.split('/').pop()
+              );
+              for (const [key, val] of Object.entries(smVars)) {
+                if (!allEnvVars[key] ||
+                    allEnvVars[key].value === '(detected in source)' ||
+                    allEnvVars[key].value === '(referenced)') {
+                  allEnvVars[key] = val;
+                }
+              }
+            }
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
     if (Object.keys(allEnvVars).length > 0) {
       applyFilters();
       showContent();
@@ -897,6 +1007,76 @@ function parseScriptForEnvVars(content, source) {
     }
   }
 
+  return envVars;
+}
+
+function processSourceMapForViteEnv(compiledCode, sourceMapJson, source) {
+  const envVars = {};
+  if (!sourceMapJson || !sourceMapJson.sourcesContent) return envVars;
+
+  for (const origSrc of sourceMapJson.sourcesContent) {
+    if (!origSrc || !origSrc.includes('import.meta.env.VITE_')) continue;
+
+    // Strategy 1: Property/label pattern - key: import.meta.env.VITE_X
+    // Handles both quoted ('key') and unquoted (key) property names
+    const labelPat = /(?:['"]([^'"]+)['"]|(\w+))\s*:\s*import\.meta\.env\.(VITE_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(labelPat)) {
+      const label = ref[1] || ref[2];
+      const envName = ref[3];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try {
+        const pat = new RegExp("['\"]?" + escapedLabel + "['\"]?\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
+        const m = compiledCode.match(pat);
+        if (m && m[1]) {
+          envVars[envName] = { value: m[1], source: source + ' (Vite)' };
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // Strategy 2: Variable assignment - const x = import.meta.env.VITE_X
+    const assignPat = /(?:const|let|var)\s+(\w+)\s*=\s*import\.meta\.env\.(VITE_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(assignPat)) {
+      const varName = ref[1];
+      const envName = ref[2];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const safeVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try {
+        const pat = new RegExp('(?:const|let|var)?\\s*' + safeVar + '\\s*=\\s*["\']([^"\']{1,500})["\']');
+        const m = compiledCode.match(pat);
+        if (m && m[1]) {
+          envVars[envName] = { value: m[1], source: source + ' (Vite)' };
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // Strategy 3: Context matching - use surrounding code to find replacement values
+    const contextPat = /(.{0,60})import\.meta\.env\.(VITE_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(contextPat)) {
+      const envName = ref[2];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const before = ref[1].replace(/\s+$/, '');
+      const anchor = before.slice(-25);
+      if (anchor.length >= 3) {
+        const escapedAnchor = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        try {
+          const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
+          const m = compiledCode.match(pat);
+          if (m && m[1]) {
+            envVars[envName] = { value: m[1], source: source + ' (Vite)' };
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    // Fallback: Register remaining as detected in source
+    const anyPat = /import\.meta\.env\.(VITE_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(anyPat)) {
+      if (!envVars[ref[1]]) {
+        envVars[ref[1]] = { value: '(detected in source)', source: source + ' (Vite source map)' };
+      }
+    }
+  }
   return envVars;
 }
 
