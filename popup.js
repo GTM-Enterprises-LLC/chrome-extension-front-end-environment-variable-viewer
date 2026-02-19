@@ -1,10 +1,10 @@
 // Content script that extracts environment variables from the page
 function extractEnvVars() {
   const envVars = {};
-  
+
   // Method 1: Check window object for common framework env patterns
   const windowKeys = Object.keys(window);
-  
+
   // Look for framework-specific prefixed variables
   const envPrefixes = [
     'REACT_APP_',      // Create React App
@@ -17,7 +17,7 @@ function extractEnvVars() {
     'SVELTE_',         // Svelte (custom)
     'PUBLIC_',         // Generic public prefix
   ];
-  
+
   const commonVars = [
     'NODE_ENV',
     'PUBLIC_URL',
@@ -26,11 +26,11 @@ function extractEnvVars() {
     'BASE_URL',
     'VITE_API_URL',
   ];
-  
+
   windowKeys.forEach(key => {
     const matchesPrefix = envPrefixes.some(prefix => key.startsWith(prefix));
     const isCommonVar = commonVars.includes(key);
-    
+
     if (matchesPrefix || isCommonVar) {
       envVars[key] = {
         value: window[key],
@@ -38,7 +38,7 @@ function extractEnvVars() {
       };
     }
   });
-  
+
   // Method 2: Check for window.env or window._env
   if (window.env && typeof window.env === 'object') {
     Object.keys(window.env).forEach(key => {
@@ -48,7 +48,7 @@ function extractEnvVars() {
       };
     });
   }
-  
+
   if (window._env && typeof window._env === 'object') {
     Object.keys(window._env).forEach(key => {
       envVars[key] = {
@@ -57,7 +57,7 @@ function extractEnvVars() {
       };
     });
   }
-  
+
   // Method 3: Check for window.config
   if (window.config && typeof window.config === 'object') {
     Object.keys(window.config).forEach(key => {
@@ -69,7 +69,7 @@ function extractEnvVars() {
       }
     });
   }
-  
+
   // Vite-specific: Check for import.meta.env pattern
   if (window.__VITE_ENV__ && typeof window.__VITE_ENV__ === 'object') {
     Object.keys(window.__VITE_ENV__).forEach(key => {
@@ -81,12 +81,12 @@ function extractEnvVars() {
       }
     });
   }
-  
+
   // Next.js: Check for __NEXT_DATA__
   if (window.__NEXT_DATA__ && window.__NEXT_DATA__.props) {
-    const nextEnv = window.__NEXT_DATA__.props.pageProps?.env || 
-                    window.__NEXT_DATA__.props.env ||
-                    window.__NEXT_DATA__.runtimeConfig;
+    const nextEnv = window.__NEXT_DATA__.props.pageProps?.env ||
+      window.__NEXT_DATA__.props.env ||
+      window.__NEXT_DATA__.runtimeConfig;
     if (nextEnv && typeof nextEnv === 'object') {
       Object.keys(nextEnv).forEach(key => {
         if (!envVars[key]) {
@@ -98,7 +98,7 @@ function extractEnvVars() {
       });
     }
   }
-  
+
   // Nuxt.js: Check for __NUXT__
   if (window.__NUXT__ && window.__NUXT__.config) {
     const nuxtConfig = window.__NUXT__.config;
@@ -113,26 +113,26 @@ function extractEnvVars() {
       });
     }
   }
-  
+
   // Angular: Check for ng object
   if (window.ng && window.ng.probe) {
     // Angular often uses injected config services
     // This is a placeholder as Angular env detection is framework-specific
   }
-  
+
   // Method 4: Parse inline and external script content for bundled env vars
   const scripts = document.querySelectorAll('script');
   scripts.forEach(script => {
     const content = script.textContent || script.innerHTML;
     if (!content) return;
-    
+
     // All framework prefixes to search for
     const prefixPatterns = [
-      'REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_', 
+      'REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_',
       'NUXT_PUBLIC_', 'GATSBY_', 'ANGULAR_', 'SVELTE_', 'PUBLIC_'
     ];
     const prefixRegex = prefixPatterns.join('|');
-    
+
     // Pattern 1: Framework env variables with values
     // Matches: VITE_API_URL:"https://api.example.com" or REACT_APP_API_URL:"value"
     const pattern1 = new RegExp(`(?:${prefixRegex}|NODE_ENV|PUBLIC_URL|BASE_URL)[\\w_]*\\s*:\\s*["']([^"']+)["']`, 'g');
@@ -150,7 +150,7 @@ function extractEnvVars() {
         }
       }
     }
-    
+
     // Pattern 2: Vite's import.meta.env pattern (replaced at build time)
     // Matches: import.meta.env.VITE_API_URL or variations after build
     const vitePattern = /(?:import\.meta\.env\.|env_)?(VITE_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
@@ -164,7 +164,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 3: Next.js environment variable pattern
     // Matches: process.env.NEXT_PUBLIC_API_URL replaced with string
     const nextPattern = /(NEXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
@@ -178,7 +178,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 4: Vue CLI pattern
     const vuePattern = /(VUE_APP_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
     for (const match of content.matchAll(vuePattern)) {
@@ -191,7 +191,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 5: Nuxt pattern
     const nuxtPattern = /(NUXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
     for (const match of content.matchAll(nuxtPattern)) {
@@ -204,7 +204,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 6: Object property assignments (all frameworks)
     // Matches: {VITE_API_URL:"value"} or {REACT_APP_KEY:"value"}
     const pattern2 = new RegExp(`\\{[\\s\\S]{0,50}((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*:\\s*["']([^"']+)["']`, 'g');
@@ -218,7 +218,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 7: Variable assignments (all frameworks)
     // Matches: var VITE_API_URL="value" or const REACT_APP_KEY="value"
     const pattern3 = new RegExp(`(?:var|let|const)\\s+((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*=\\s*["']([^"']+)["']`, 'g');
@@ -232,7 +232,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 8: Webpack DefinePlugin pattern (works for all frameworks)
     // Matches: n.env.VITE_API_URL="value" or e.REACT_APP_API_URL="value"
     const pattern4 = /[a-z]\.(?:env\.)?([A-Z_][A-Z0-9_]*)\s*=\s*["']([^"']+)["']/g;
@@ -241,7 +241,7 @@ function extractEnvVars() {
       const value = match[2];
       const matchesAnyPrefix = prefixPatterns.some(prefix => key.startsWith(prefix));
       const isCommonVar = ['NODE_ENV', 'PUBLIC_URL', 'BASE_URL', 'API_URL'].includes(key);
-      
+
       if ((matchesAnyPrefix || isCommonVar) && !envVars[key]) {
         envVars[key] = {
           value: value,
@@ -249,7 +249,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 9: String literal replacements in minified code
     // Look for quoted env var names followed by values
     const pattern5 = new RegExp(`["']((?:${prefixRegex})[\\w_]+)["']\\s*[,:]\\s*["']([^"']+)["']`, 'g');
@@ -263,7 +263,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     // Pattern 10: Direct NODE_ENV detection - STRICT matching only
     // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
     const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
@@ -273,7 +273,7 @@ function extractEnvVars() {
         source: 'bundled script (detected)'
       };
     }
-    
+
     // Pattern 11: Vite's mode detection
     const viteModeMatch = content.match(/mode\s*:\s*["'](production|development)["']/);
     if (viteModeMatch && !envVars.MODE) {
@@ -282,7 +282,7 @@ function extractEnvVars() {
         source: 'Vite mode'
       };
     }
-    
+
     // Old patterns for explicit assignments (kept for compatibility)
     const envMatches = content.matchAll(/process\.env\.(\w+)\s*=\s*["']([^"']+)["']/g);
     for (const match of envMatches) {
@@ -295,7 +295,7 @@ function extractEnvVars() {
         };
       }
     }
-    
+
     const reactMatches = content.matchAll(/window\.(REACT_APP_\w+)\s*=\s*["']([^"']+)["']/g);
     for (const match of reactMatches) {
       const key = match[1];
@@ -308,7 +308,7 @@ function extractEnvVars() {
       }
     }
   });
-  
+
   // Method 5: Check meta tags
   const metaTags = document.querySelectorAll('meta[name^="env:"], meta[name^="react-env:"]');
   metaTags.forEach(meta => {
@@ -321,7 +321,7 @@ function extractEnvVars() {
       };
     }
   });
-  
+
   // Method 6: Check for __RUNTIME_CONFIG__ pattern (common in some React apps)
   if (window.__RUNTIME_CONFIG__ && typeof window.__RUNTIME_CONFIG__ === 'object') {
     Object.keys(window.__RUNTIME_CONFIG__).forEach(key => {
@@ -333,7 +333,7 @@ function extractEnvVars() {
       }
     });
   }
-  
+
   return envVars;
 }
 
@@ -341,10 +341,47 @@ function extractEnvVars() {
 let allEnvVars = {};
 let filteredVars = {};
 let currentFilter = 'all';
+let currentFrameworkFilter = '';
+
+const THEME_STORAGE_KEY = 'envViewerTheme';
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  const sunEl = document.querySelector('.theme-icon.theme-sun');
+  const moonEl = document.querySelector('.theme-icon.theme-moon');
+  if (sunEl && moonEl) {
+    if (theme === 'dark') {
+      sunEl.classList.add('hidden');
+      moonEl.classList.remove('hidden');
+    } else {
+      sunEl.classList.remove('hidden');
+      moonEl.classList.add('hidden');
+    }
+  }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load saved theme from local storage (persists reliably when popup closes)
+  try {
+    const { [THEME_STORAGE_KEY]: savedTheme } = await chrome.storage.local.get(THEME_STORAGE_KEY);
+    const theme = savedTheme === 'dark' ? 'dark' : 'light';
+    applyTheme(theme);
+  } catch (_) {
+    applyTheme('light');
+  }
+
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const root = document.documentElement;
+    const current = root.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    // Fire-and-forget: write immediately so it persists even if user closes popup right after
+    chrome.storage.local.set({ [THEME_STORAGE_KEY]: next }).catch(() => { });
+  });
+
   loadEnvironmentVariables();
-  
+
   // Set up event listeners
   document.getElementById('refreshBtn').addEventListener('click', loadEnvironmentVariables);
   document.getElementById('searchInput').addEventListener('input', handleSearch);
@@ -354,47 +391,70 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Event delegation for copy value buttons
   document.getElementById('envVars').addEventListener('click', (e) => {
-    if (e.target.classList.contains('copy-value-btn')) {
-      const value = e.target.getAttribute('data-value');
-      navigator.clipboard.writeText(value).then(() => {
-        const originalText = e.target.textContent;
-        e.target.textContent = '✓';
-        setTimeout(() => {
-          e.target.textContent = originalText;
-        }, 1000);
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-      });
-    }
+    const btn = e.target.closest('.copy-value-btn');
+    if (!btn) return;
+    const value = btn.getAttribute('data-value');
+    navigator.clipboard.writeText(value).then(() => {
+      const copyIcon = '<svg class="icon" focusable="false"><use href="#icon-copy"></use></svg>';
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = copyIcon;
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+    });
   });
-  
-  // Filter buttons
+
+  // Filter buttons (All, Secrets, NODE_ENV) — clicking one clears dropdown
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      currentFilter = e.target.dataset.filter;
+      e.currentTarget.classList.add('active');
+      currentFilter = e.currentTarget.dataset.filter;
+      currentFrameworkFilter = '';
+      const frameworkSelect = document.getElementById('frameworkSelect');
+      frameworkSelect.value = '';
+      frameworkSelect.classList.remove('active');
       applyFilters();
     });
+  });
+
+  // Framework dropdown — selecting a framework clears button selection and highlights dropdown
+  document.getElementById('frameworkSelect').addEventListener('change', (e) => {
+    const select = e.target;
+    currentFrameworkFilter = select.value || '';
+    if (currentFrameworkFilter) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      currentFilter = '';
+      select.classList.add('active');
+    } else {
+      currentFilter = 'all';
+      document.querySelector('.filter-btn[data-filter="all"]')?.classList.add('active');
+      select.classList.remove('active');
+    }
+    applyFilters();
   });
 });
 
 async function loadEnvironmentVariables() {
   showLoading();
-  
+
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
     // First, extract from inline scripts and window object
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: extractEnvVars
     });
-    
+
     if (results && results[0] && results[0].result) {
       allEnvVars = results[0].result;
     }
-    
+
     // Second, get all external script URLs and fetch them (including ES6 modules)
     const scriptUrlsResult = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -441,13 +501,13 @@ async function loadEnvironmentVariables() {
     });
 
     const scriptUrls = scriptUrlsResult[0]?.result || [];
-    
+
     // Fetch and parse external scripts
     for (const url of scriptUrls.slice(0, 10)) { // Limit to first 10 scripts to avoid performance issues
       try {
         const response = await fetch(url);
         const scriptContent = await response.text();
-        
+
         // Parse the fetched script content
         const vars = parseScriptForEnvVars(scriptContent, 'external script: ' + url.split('/').pop());
         Object.assign(allEnvVars, vars);
@@ -455,7 +515,7 @@ async function loadEnvironmentVariables() {
         console.log('Could not fetch script:', url, error);
       }
     }
-    
+
     if (Object.keys(allEnvVars).length > 0) {
       applyFilters();
       showContent();
@@ -470,16 +530,16 @@ async function loadEnvironmentVariables() {
 
 function parseScriptForEnvVars(content, source) {
   const envVars = {};
-  
+
   if (!content) return envVars;
-  
+
   // All framework prefixes
   const prefixPatterns = [
-    'REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_', 
+    'REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_',
     'NUXT_PUBLIC_', 'GATSBY_', 'ANGULAR_', 'SVELTE_', 'PUBLIC_'
   ];
   const prefixRegex = prefixPatterns.join('|');
-  
+
   // Pattern 1: Framework env variables with values
   const pattern1 = new RegExp(`(?:${prefixRegex}|NODE_ENV|PUBLIC_URL|BASE_URL)[\\w_]*\\s*:\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern1)) {
@@ -493,7 +553,7 @@ function parseScriptForEnvVars(content, source) {
       }
     }
   }
-  
+
   // Pattern 2: Vite import.meta.env pattern
   const vitePattern = /(?:import\.meta\.env\.|env_)?(VITE_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(vitePattern)) {
@@ -503,7 +563,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source: source + ' (Vite)' };
     }
   }
-  
+
   // Pattern 3: Next.js pattern
   const nextPattern = /(NEXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(nextPattern)) {
@@ -513,7 +573,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source: source + ' (Next.js)' };
     }
   }
-  
+
   // Pattern 4: Vue CLI pattern
   const vuePattern = /(VUE_APP_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(vuePattern)) {
@@ -523,7 +583,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source: source + ' (Vue)' };
     }
   }
-  
+
   // Pattern 5: Nuxt pattern
   const nuxtPattern = /(NUXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(nuxtPattern)) {
@@ -533,7 +593,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source: source + ' (Nuxt)' };
     }
   }
-  
+
   // Pattern 6: Object property assignments (all frameworks)
   const pattern2 = new RegExp(`\\{[\\s\\S]{0,50}((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*:\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern2)) {
@@ -543,7 +603,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source };
     }
   }
-  
+
   // Pattern 7: Variable assignments (all frameworks)
   const pattern3 = new RegExp(`(?:var|let|const)\\s+((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*=\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern3)) {
@@ -553,7 +613,7 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source };
     }
   }
-  
+
   // Pattern 8: Webpack DefinePlugin pattern (works for all frameworks)
   const pattern4 = /[a-z]\.(?:env\.)?([A-Z_][A-Z0-9_]*)\s*=\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(pattern4)) {
@@ -561,12 +621,12 @@ function parseScriptForEnvVars(content, source) {
     const value = match[2];
     const matchesAnyPrefix = prefixPatterns.some(prefix => key.startsWith(prefix));
     const isCommonVar = ['NODE_ENV', 'PUBLIC_URL', 'BASE_URL', 'API_URL'].includes(key);
-    
+
     if ((matchesAnyPrefix || isCommonVar) && !envVars[key]) {
       envVars[key] = { value, source: source + ' (webpack)' };
     }
   }
-  
+
   // Pattern 9: String literal replacements in minified code
   const pattern5 = new RegExp(`["']((?:${prefixRegex})[\\w_]+)["']\\s*[,:]\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern5)) {
@@ -576,14 +636,14 @@ function parseScriptForEnvVars(content, source) {
       envVars[key] = { value, source: source + ' (minified)' };
     }
   }
-  
+
   // Pattern 10: Direct NODE_ENV detection - STRICT matching only
   // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
   const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
   if (nodeEnvMatch && !envVars.NODE_ENV) {
     envVars.NODE_ENV = { value: nodeEnvMatch[1], source: source + ' (detected)' };
   }
-  
+
   // Pattern 11: Vite mode
   const viteModeMatch = content.match(/mode\s*:\s*["'](production|development)["']/);
   if (viteModeMatch && !envVars.MODE) {
@@ -712,7 +772,7 @@ function parseScriptForEnvVars(content, source) {
       ];
 
       if (genericBlacklist.includes(key.toLowerCase()) ||
-          genericValues.includes(value.toLowerCase())) {
+        genericValues.includes(value.toLowerCase())) {
         continue; // Skip generic property names and values
       }
 
@@ -900,60 +960,55 @@ function parseScriptForEnvVars(content, source) {
   return envVars;
 }
 
+function includeByFramework(key, framework) {
+  if (!framework) return true;
+  switch (framework) {
+    case 'react': return key.startsWith('REACT_APP_') || key === 'REACT_ENV';
+    case 'vite': return key.startsWith('VITE_') || key === 'MODE';
+    case 'next': return key.startsWith('NEXT_PUBLIC_');
+    case 'vue': return key.startsWith('VUE_APP_');
+    case 'nuxt': return key.startsWith('NUXT_PUBLIC_');
+    case 'gatsby': return key.startsWith('GATSBY_');
+    default: return true;
+  }
+}
+
 function applyFilters() {
   const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-  
-  // Apply filter
+
   filteredVars = Object.keys(allEnvVars).reduce((acc, key) => {
-    let includeByFilter = false;
-    
-    switch(currentFilter) {
-      case 'all':
-        includeByFilter = true;
-        break;
-      case 'react':
-        includeByFilter = key.startsWith('REACT_APP_') || key === 'REACT_ENV';
-        break;
-      case 'vite':
-        includeByFilter = key.startsWith('VITE_') || key === 'MODE';
-        break;
-      case 'next':
-        includeByFilter = key.startsWith('NEXT_PUBLIC_');
-        break;
-      case 'vue':
-        includeByFilter = key.startsWith('VUE_APP_');
-        break;
-      case 'nuxt':
-        includeByFilter = key.startsWith('NUXT_PUBLIC_');
-        break;
-      case 'gatsby':
-        includeByFilter = key.startsWith('GATSBY_');
-        break;
-      case 'node':
-        includeByFilter = key === 'NODE_ENV';
-        break;
-      case 'public':
-        includeByFilter = key === 'PUBLIC_URL' || key.includes('PUBLIC');
-        break;
-      case 'secrets':
-        includeByFilter = key.includes('SECRET') || key.includes('ACCESS_KEY') ||
-                         key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
-                         key.includes('API_KEY');
-        break;
+    let includeByCategory = false;
+    // If a framework is selected, filter only by framework (ignore All/Secrets/NODE_ENV)
+    if (currentFrameworkFilter) {
+      includeByCategory = includeByFramework(key, currentFrameworkFilter);
+    } else {
+      switch (currentFilter) {
+        case 'all':
+          includeByCategory = true;
+          break;
+        case 'secrets':
+          includeByCategory = key.includes('SECRET') || key.includes('ACCESS_KEY') ||
+            key.includes('UUID_TOKEN') || key.includes('PAYMENT_') ||
+            key.includes('API_KEY');
+          break;
+        case 'node':
+          includeByCategory = key === 'NODE_ENV';
+          break;
+        default:
+          includeByCategory = true;
+      }
     }
-    
-    // Apply search
-    const includeBySearch = !searchTerm || 
-      key.toLowerCase().includes(searchTerm) || 
+
+    const includeBySearch = !searchTerm ||
+      key.toLowerCase().includes(searchTerm) ||
       String(allEnvVars[key].value).toLowerCase().includes(searchTerm);
-    
-    if (includeByFilter && includeBySearch) {
+
+    if (includeByCategory && includeBySearch) {
       acc[key] = allEnvVars[key];
     }
-    
     return acc;
   }, {});
-  
+
   displayEnvironmentVariables();
 
   // Show warning if secrets detected
@@ -977,18 +1032,18 @@ function handleSearch() {
 function displayEnvironmentVariables() {
   const container = document.getElementById('envVars');
   const noVarsDiv = document.getElementById('noVars');
-  
+
   if (Object.keys(filteredVars).length === 0) {
     container.innerHTML = '';
     noVarsDiv.classList.remove('hidden');
     return;
   }
-  
+
   noVarsDiv.classList.add('hidden');
-  
+
   // Sort alphabetically
   const sortedKeys = Object.keys(filteredVars).sort();
-  
+
   container.innerHTML = sortedKeys.map(key => {
     const { value, source } = filteredVars[key];
     const displayValue = value !== undefined && value !== null && value !== ''
@@ -996,31 +1051,15 @@ function displayEnvironmentVariables() {
       : '(empty)';
     const isEmpty = value === undefined || value === null || value === '';
 
-    // Determine icon based on source
-    let icon = '📄';
-    if (source.includes('external script')) {
-      icon = '📦';
-    } else if (source.includes('inline script') || source.includes('bundled script')) {
-      icon = '📜';
-    } else if (source.includes('window')) {
-      icon = '🪟';
-    } else if (source.includes('hardcoded') || source.includes('DETECTED')) {
-      icon = '⚠️';
-    }
-
     return `
       <div class="env-item">
         <div class="env-key">
           <span>${escapeHtml(key)}</span>
-          <span class="source-icon" title="${escapeHtml(source)}">
-            ${icon}
-            <span class="source-popover">${escapeHtml(source)}</span>
-          </span>
         </div>
         <div class="env-value ${isEmpty ? 'empty' : ''}">
           <span class="value-text">${escapeHtml(displayValue)}</span>
-          <button class="copy-value-btn" data-value="${escapeHtml(displayValue)}" title="Copy value">
-            📋
+          <button class="copy-value-btn" data-value="${escapeHtml(displayValue)}" title="Copy value" type="button">
+            <svg class="icon" focusable="false"><use href="#icon-copy"></use></svg>
           </button>
         </div>
       </div>
@@ -1042,7 +1081,7 @@ function copyAllVariables() {
     .sort()
     .map(key => `${key}=${filteredVars[key].value}`)
     .join('\n');
-  
+
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.getElementById('copyBtn');
     const originalText = btn.textContent;
@@ -1062,11 +1101,11 @@ function exportToJson() {
       acc[key] = filteredVars[key].value;
       return acc;
     }, {});
-  
+
   const jsonString = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonString], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = 'react-env-variables.json';
@@ -1074,7 +1113,7 @@ function exportToJson() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   const btn = document.getElementById('exportBtn');
   const originalText = btn.textContent;
   btn.textContent = 'Exported!';
@@ -1312,8 +1351,8 @@ function searchInScripts(searchTerm) {
         const start = Math.max(0, match.matchIndex - 50);
         const end = Math.min(displayLine.length, match.matchIndex + searchTerm.length + 50);
         displayLine = (start > 0 ? '...' : '') +
-                     displayLine.substring(start, end) +
-                     (end < displayLine.length ? '...' : '');
+          displayLine.substring(start, end) +
+          (end < displayLine.length ? '...' : '');
       }
 
       const highlightedLine = displayLine.replace(
@@ -1331,7 +1370,8 @@ function searchInScripts(searchTerm) {
     return `
       <div class="search-result-item">
         <div class="search-result-file" title="${escapeHtml(result.scriptName)}">
-          📄 ${escapeHtml(fileName)}
+          <svg class="icon" focusable="false"><use href="#icon-file"></use></svg>
+          ${escapeHtml(fileName)}
         </div>
         <div class="search-result-matches">
           ${result.matches.length} match${result.matches.length !== 1 ? 'es' : ''}
