@@ -10,6 +10,8 @@ Detect exposed environment variables and hardcoded secrets in React, Vue, Angula
 
 **EnvVars** is a powerful Chrome extension that instantly detects environment variables and hardcoded secrets exposed in your frontend JavaScript bundles. Perfect for security audits, code reviews, and ensuring production builds don't leak sensitive information.
 
+**Developed by GTM Enterprises LLC** - A trusted developer of security and developer tools. Learn more at https://gtmenterprisesllc.com
+
 ### 🔍 What It Detects
 
 **Environment Variables:**
@@ -92,9 +94,12 @@ Clean, modern interface with:
 - Export to JSON or .env format for reports
 - Responsive design that fits your workflow
 
-### 🔄 Recent Updates (v3.4.0)
+### 🔄 Recent Updates (v3.5.0)
 
-**New in v3.4.0:**
+**New in v3.5.0:**
+- Minor stability improvements and bug fixes
+
+**v3.4.0:**
 - 📑 Tab-based navigation (Variables tab + Script Search tab)
 - Extension icon in header for better branding
 - Fixed false positive detection of generic properties (name, value, etc.)
@@ -173,13 +178,21 @@ Unlike manual inspection of JavaScript files, EnvVars:
 - Filters out noise, shows what matters
 - Identifies security risks automatically
 
-### 📖 Documentation
+### 📖 Documentation & Links
+
+- **GitHub Repository**: https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer
+- **Report Issues**: https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues
+- **Developer Website**: https://gtmenterprisesllc.com
+- **Privacy Policy**: https://gtmenterprisesllc.com/privacy-policy-envvars
+- **Support**: https://gtmenterprisesllc.com/support
 
 Full documentation, testing guide, and demo applications available in the GitHub repository.
 
 ---
 
 **Ready to secure your frontend?** Install EnvVars today and ensure your environment variables and secrets are properly managed!
+
+**Developed by GTM Enterprises LLC** - https://gtmenterprisesllc.com
 
 ## Category
 Developer Tools
@@ -188,13 +201,17 @@ Developer Tools
 English
 
 ## Privacy Policy
-https://gtm-enterprises-llc.github.io/chrome-extension-front-end-environment-variable-viewer/privacy-policy.html
+https://gtmenterprisesllc.com/privacy-policy-envvars
+
+(Alternative: https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/blob/main/PRIVACY_POLICY.md)
 
 ## Support URL
-https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues
+https://gtmenterprisesllc.com/support
+
+(Alternative: https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues)
 
 ## Version
-3.4.0
+3.5.0
 
 ## Permissions Justification
 
@@ -311,19 +328,38 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 2. **Upload 8 screenshots** showing the features described above
 3. **Upload store icon** (128x128)
 4. **Optional**: Create and upload promotional tiles
-5. **Review privacy policy** link is working
-6. **Test the listing** in preview mode before publishing
+5. **Set up external links**:
+   - Privacy Policy: https://gtmenterprisesllc.com/privacy-policy-envvars
+   - Support URL: https://gtmenterprisesllc.com/support
+   - Developer Website: https://gtmenterprisesllc.com
+   - Ensure all URLs are accessible before submission
+6. **Review privacy policy** link is working
+7. **Test the listing** in preview mode before publishing
+
+### Important Notes About External Links
+- The Chrome Web Store requires a publicly accessible privacy policy URL
+- You must host the privacy policy on gtmenterprisesllc.com before submission
+- Support URL should point to your support page or GitHub Issues
+- All external links will be clickable in the store listing
 
 ## Pre-Launch Checklist
 
+### External Links Setup
+- [ ] Privacy policy hosted at https://gtmenterprisesllc.com/privacy-policy-envvars
+- [ ] Support page accessible at https://gtmenterprisesllc.com/support
+- [ ] Developer website accessible at https://gtmenterprisesllc.com
+- [ ] GitHub repository is public and accessible
+- [ ] GitHub issues page working
+
+### Chrome Web Store Assets
 - [ ] All screenshots captured and edited (8 screenshots showing v3.4.0 features)
 - [ ] Store icon uploaded (128x128)
-- [ ] Privacy policy page accessible
-- [ ] GitHub issues link working
-- [ ] Version number matches manifest.json (3.4.0)
+- [ ] Version number matches manifest.json (3.5.0)
 - [ ] Description reviewed for typos
 - [ ] Keywords optimized for search
 - [ ] Permissions justifications clear and accurate
+
+### Testing & Quality Assurance
 - [ ] Test extension in incognito mode
 - [ ] Verify extension works on multiple sites
 - [ ] Run automated tests: `npm run test:e2e` (9 Playwright tests should pass)
@@ -335,6 +371,13 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 - [ ] Verify script search tab functionality
 - [ ] Check secrets detection and warning banner
 
+### Final Verification
+- [ ] All external links (gtmenterprisesllc.com) are live and working
+- [ ] Privacy policy is accessible and accurate
+- [ ] Support page has contact information
+- [ ] Extension zip file uploaded successfully
+- [ ] Store listing preview looks correct
+
 ## Post-Launch Actions
 
 1. Monitor Chrome Web Store reviews
@@ -345,6 +388,28 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 
 ---
 
-**Last Updated**: 2026-01-13
-**Version**: 3.4.0
-**Maintainer**: GTM Enterprises LLC
+## 🏢 About GTM Enterprises LLC
+
+**GTM Enterprises LLC** is a software development company specializing in developer tools and security solutions. We build open-source tools that help developers write more secure code and ship better products.
+
+### Our Mission
+Empowering developers with tools that make security and code quality easy, accessible, and integrated into everyday workflows.
+
+### Other Products
+Visit https://gtmenterprisesllc.com to explore our other developer tools and solutions.
+
+### Contact
+- **Website**: https://gtmenterprisesllc.com
+- **Email**: support@gtmenterprisesllc.com
+- **GitHub**: https://github.com/GTM-Enterprises-LLC
+- **Support**: https://gtmenterprisesllc.com/support
+
+### Contributing
+EnvVars is open source! We welcome contributions from the community. Visit our GitHub repository to contribute, report issues, or suggest features.
+
+---
+
+**Last Updated**: 2026-02-19
+**Version**: 3.5.0
+**Developer**: GTM Enterprises LLC
+**Website**: https://gtmenterprisesllc.com
