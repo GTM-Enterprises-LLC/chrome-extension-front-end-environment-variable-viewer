@@ -942,7 +942,7 @@ function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
   for (const origSrc of sourceMapJson.sourcesContent) {
     if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
 
-    // Label pattern: 'Label': process.env.NEXT_PUBLIC_X
+    // Strategy 1: Label pattern - 'Label': process.env.NEXT_PUBLIC_X
     const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
     for (const ref of origSrc.matchAll(labelPat)) {
       const label = ref[1];
@@ -953,12 +953,28 @@ function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
         const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
         const m = compiledCode.match(pat);
         if (m && m[1]) {
-          envVars[envName] = { value: m[1], source: source + ' (Next.js source map)' };
+          envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
         }
       } catch (e) { /* skip */ }
     }
 
-    // Context matching: use surrounding text to find replacement values
+    // Strategy 2: Variable assignment - const x = process.env.NEXT_PUBLIC_X
+    const assignPat = /(?:const|let|var)\s+(\w+)\s*=\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(assignPat)) {
+      const varName = ref[1];
+      const envName = ref[2];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const safeVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try {
+        const pat = new RegExp('(?:const|let|var)?\\s*' + safeVar + '\\s*=\\s*["\']([^"\']{1,500})["\']');
+        const m = compiledCode.match(pat);
+        if (m && m[1]) {
+          envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // Strategy 3: Context matching - use surrounding text to find replacement values
     const contextPat = /(.{0,60})process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
     for (const ref of origSrc.matchAll(contextPat)) {
       const envName = ref[2];
@@ -971,13 +987,13 @@ function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
           const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
           const m = compiledCode.match(pat);
           if (m && m[1]) {
-            envVars[envName] = { value: m[1], source: source + ' (Next.js source map)' };
+            envVars[envName] = { value: m[1], source: source + ' (Next.js)' };
           }
         } catch (e) { /* skip */ }
       }
     }
 
-    // Register remaining as detected
+    // Fallback: Register remaining as detected
     const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
     for (const ref of origSrc.matchAll(anyPat)) {
       if (!envVars[ref[1]]) {
@@ -985,7 +1001,6 @@ function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
       }
     }
   }
-
   return envVars;
 }
 
