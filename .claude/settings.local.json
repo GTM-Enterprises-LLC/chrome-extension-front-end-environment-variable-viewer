@@ -32,7 +32,9 @@
       "Bash(npm run playwright:report:*)",
       "Bash(git rm:*)",
       "Bash(git add:*)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "Bash(find:*)",
+      "Bash(node:*)"
     ]
   }
 }
