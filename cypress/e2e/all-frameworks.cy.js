@@ -35,6 +35,18 @@ describe('All Frameworks - Environment Variables Detection', () => {
       url: Cypress.env('angularProd') || 'http://localhost:8083',
       prefix: null, // Angular uses environment object
       expectedCount: 8
+    },
+    {
+      name: 'Nuxt.js',
+      url: Cypress.env('nuxtProd') || 'http://localhost:3006',
+      prefix: 'NUXT_PUBLIC_',
+      expectedCount: 8
+    },
+    {
+      name: 'Gatsby',
+      url: Cypress.env('gatsbyProd') || 'http://localhost:9000',
+      prefix: 'GATSBY_',
+      expectedCount: 8
     }
   ]
 

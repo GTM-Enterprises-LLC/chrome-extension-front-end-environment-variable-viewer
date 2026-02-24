@@ -24,6 +24,18 @@ Five demo applications showcasing environment variables and dangerous exposed se
 - **Port**: 3000
 - **Features**: Classic React setup with API integration demo
 
+### 4. Nuxt.js Demo (`/nuxtjs-demo`)
+- **Framework**: Nuxt 3 (Vue-based)
+- **Env Prefix**: `NUXT_PUBLIC_`
+- **Port**: 3005 (dev) / 3006 (prod)
+- **Features**: Server-side rendering with runtime config, green gradient theme
+
+### 5. Gatsby Demo (`/gatsby-demo`)
+- **Framework**: Gatsby 5 (React-based SSG)
+- **Env Prefix**: `GATSBY_`
+- **Port**: 8000 (dev) / 9000 (prod)
+- **Features**: Static site generation with build-time env injection, purple gradient theme
+
 ### Dangerous Exposed Secrets Demos
 
 ### 4. Security Dashboard (`/security-dashboard`)
@@ -66,6 +78,22 @@ cd react-demo
 npm install
 npm start
 # Opens at http://localhost:3000
+```
+
+### Nuxt.js Demo
+```bash
+cd nuxtjs-demo
+npm install
+npm run dev
+# Opens at http://localhost:3000
+```
+
+### Gatsby Demo
+```bash
+cd gatsby-demo
+npm install
+npm run dev
+# Opens at http://localhost:8000
 ```
 
 ### Security Dashboard (Dangerous Keys)
@@ -138,6 +166,22 @@ npm run dev
 - Logging and monitoring (Sentry DSN)
 - Version and build information
 - Environment designation
+
+### Nuxt.js Demo Environment Variables
+- API base URL
+- Google Analytics ID
+- Stripe public key
+- App name and dark mode toggle
+- CDN URL and Sentry DSN
+- Max upload size
+
+### Gatsby Demo Environment Variables
+- API URL
+- Google Analytics ID
+- Stripe public key
+- App title and comments toggle
+- CDN URL and Sentry DSN
+- Contentful Space ID
 
 ### Security Dashboard (Dangerous Keys) 🔴
 **30+ Critical & High-Risk Credentials:**
@@ -214,12 +258,12 @@ All demos display realistic production-like configurations:
 
 ## 📦 What's Different in Each Framework?
 
-| Feature | Vite | Next.js | React (CRA) |
-|---------|------|---------|-------------|
-| Prefix | `VITE_` | `NEXT_PUBLIC_` | `REACT_APP_` |
-| Access | `import.meta.env` | `process.env` | `process.env` |
-| Reload | Hot | Hot | Full reload |
-| Build | Rollup | Webpack/Turbopack | Webpack |
+| Feature | Vite | Next.js | React (CRA) | Nuxt.js | Gatsby |
+|---------|------|---------|-------------|---------|--------|
+| Prefix | `VITE_` | `NEXT_PUBLIC_` | `REACT_APP_` | `NUXT_PUBLIC_` | `GATSBY_` |
+| Access | `import.meta.env` | `process.env` | `process.env` | `useRuntimeConfig()` | `process.env` |
+| Reload | Hot | Hot | Full reload | Hot | Hot |
+| Build | Rollup | Webpack/Turbopack | Webpack | Vite/Nitro | Webpack |
 
 ## 🔧 Customization
 

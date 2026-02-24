@@ -1,0 +1,16 @@
+{
+  "name": "gatsby-env-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "gatsby develop --host 0.0.0.0",
+    "build": "gatsby build",
+    "serve": "gatsby serve",
+    "clean": "gatsby clean"
+  },
+  "dependencies": {
+    "gatsby": "^5.13.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

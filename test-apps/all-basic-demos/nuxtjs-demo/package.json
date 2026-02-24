@@ -1,0 +1,16 @@
+{
+  "name": "nuxtjs-env-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt dev --host 0.0.0.0",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "start": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "nuxt": "^3.9.0",
+    "vue": "^3.4.0"
+  }
+}

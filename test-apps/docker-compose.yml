@@ -199,3 +199,56 @@ services:
       target: prod
     ports:
       - "8083:4173"
+
+  # Nuxt.js Demo - Development
+  nuxtjs-demo-dev:
+    build:
+      context: ./all-basic-demos/nuxtjs-demo
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "3005:3000"
+    volumes:
+      - ./all-basic-demos/nuxtjs-demo:/app
+      - /app/node_modules
+      - /app/.nuxt
+      - /app/.output
+    env_file:
+      - ./all-basic-demos/nuxtjs-demo/.env
+
+  # Nuxt.js Demo - Production Build
+  nuxtjs-demo-prod:
+    build:
+      context: ./all-basic-demos/nuxtjs-demo
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "3006:3000"
+    env_file:
+      - ./all-basic-demos/nuxtjs-demo/.env
+
+  # Gatsby Demo - Development
+  gatsby-demo-dev:
+    build:
+      context: ./all-basic-demos/gatsby-demo
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./all-basic-demos/gatsby-demo:/app
+      - /app/node_modules
+      - /app/.cache
+    env_file:
+      - ./all-basic-demos/gatsby-demo/.env.development
+
+  # Gatsby Demo - Production Build
+  gatsby-demo-prod:
+    build:
+      context: ./all-basic-demos/gatsby-demo
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./all-basic-demos/gatsby-demo/.env.production

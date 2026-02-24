@@ -160,20 +160,225 @@ function extractEnvVars() {
     }
   });
 
-  // Nuxt.js: Check for __NUXT__
-  if (window.__NUXT__ && window.__NUXT__.config) {
-    const nuxtConfig = window.__NUXT__.config;
-    if (nuxtConfig && typeof nuxtConfig === 'object') {
-      Object.keys(nuxtConfig).forEach(key => {
-        if (!envVars[key]) {
-          envVars[key] = {
-            value: nuxtConfig[key],
-            source: 'Nuxt.js __NUXT__'
-          };
+  // Nuxt.js: Check for __NUXT__ (Nuxt 2 & 3)
+  // Helper: convert camelCase to NUXT_PUBLIC_SCREAMING_SNAKE_CASE
+  // e.g. apiBaseUrl → NUXT_PUBLIC_API_BASE_URL
+  function camelToNuxtPublic(key) {
+    return 'NUXT_PUBLIC_' + key.replace(/([A-Z])/g, '_$1').toUpperCase();
+  }
+
+  if (window.__NUXT__) {
+    const nuxtData = window.__NUXT__;
+
+    // Nuxt 3: Extract from config.public (keys are camelCase, not NUXT_PUBLIC_ prefixed)
+    if (nuxtData.config && nuxtData.config.public && typeof nuxtData.config.public === 'object') {
+      try {
+        const publicConfig = nuxtData.config.public;
+        Object.keys(publicConfig).forEach(key => {
+          const value = publicConfig[key];
+          if (value === undefined || value === null || typeof value === 'object') return;
+          const envKey = camelToNuxtPublic(key);
+          if (!envVars[envKey]) {
+            envVars[envKey] = {
+              value: String(value),
+              source: 'Nuxt.js runtime config (public)'
+            };
+          }
+        });
+      } catch (e) { /* skip */ }
+    }
+
+    // Nuxt 2: config may have NUXT_PUBLIC_ prefixed keys directly
+    if (nuxtData.config && typeof nuxtData.config === 'object') {
+      try {
+        Object.keys(nuxtData.config).forEach(key => {
+          if (key === 'public' || key === 'app' || key === '_app') return;
+          const value = nuxtData.config[key];
+          if (typeof key === 'string' && key.startsWith('NUXT_PUBLIC_') && value !== undefined && value !== null) {
+            if (!envVars[key]) {
+              envVars[key] = { value: String(value), source: 'Nuxt.js __NUXT__.config' };
+            }
+          }
+        });
+      } catch (e) { /* skip */ }
+    }
+
+    // Nuxt 3: Also scan payload for runtime config
+    const nuxtPayloadPaths = [nuxtData.payload, nuxtData.data, nuxtData.state];
+    for (const obj of nuxtPayloadPaths) {
+      if (!obj || typeof obj !== 'object') continue;
+      try {
+        // Check if payload has _data with runtime config
+        const payloadKeys = Object.keys(obj);
+        for (const pk of payloadKeys) {
+          const pv = obj[pk];
+          if (typeof pk === 'string' && pk.startsWith('NUXT_PUBLIC_') && pv !== undefined && pv !== null) {
+            if (!envVars[pk]) {
+              envVars[pk] = { value: String(pv), source: 'Nuxt.js payload' };
+            }
+          }
         }
-      });
+      } catch (e) { /* skip */ }
+    }
+
+    // Nuxt 3: config.app may have useful config
+    if (nuxtData.config && nuxtData.config.app && typeof nuxtData.config.app === 'object') {
+      try {
+        Object.keys(nuxtData.config.app).forEach(key => {
+          const value = nuxtData.config.app[key];
+          if (typeof value === 'string' && value && !envVars['NUXT_APP_' + key.toUpperCase()]) {
+            envVars['NUXT_APP_' + key.toUpperCase()] = {
+              value: value,
+              source: 'Nuxt.js runtime config (app)'
+            };
+          }
+        });
+      } catch (e) { /* skip */ }
     }
   }
+
+  // Nuxt 3: Scan <script id="__NUXT_DATA__"> JSON payload
+  const nuxtDataScript = document.getElementById('__NUXT_DATA__');
+  if (nuxtDataScript) {
+    try {
+      const rawPayload = nuxtDataScript.textContent;
+      if (rawPayload) {
+        // Nuxt 3 uses devalue serialization — try to extract config values
+        const nuxtJsonMatches = rawPayload.matchAll(/["']((?:NUXT_PUBLIC_|nuxt_public_)[\w_]+|[a-z][\w]*(?:[A-Z][\w]*)*)["']\s*[,:]\s*["']([^"']+)["']/g);
+        for (const m of nuxtJsonMatches) {
+          const rawKey = m[1];
+          const value = m[2];
+          // Skip non-env-like values
+          if (value.length < 2 || value === 'true' || value === 'false') continue;
+          let envKey;
+          if (rawKey.startsWith('NUXT_PUBLIC_') || rawKey.startsWith('nuxt_public_')) {
+            envKey = rawKey.toUpperCase();
+          } else if (/^[a-z]/.test(rawKey) && /[A-Z]/.test(rawKey)) {
+            // camelCase key — convert to NUXT_PUBLIC_ format
+            envKey = camelToNuxtPublic(rawKey);
+          } else {
+            continue;
+          }
+          if (!envVars[envKey]) {
+            envVars[envKey] = { value: value, source: 'Nuxt.js __NUXT_DATA__ payload' };
+          }
+        }
+      }
+    } catch (e) { /* skip */ }
+  }
+
+  // Nuxt 3: Check for useRuntimeConfig payload in inline script tags
+  allScriptTags.forEach(script => {
+    const content = script.textContent || '';
+    if (content.includes('__NUXT__') || content.includes('NUXT_PUBLIC_') || content.includes('useRuntimeConfig')) {
+      // Match explicit NUXT_PUBLIC_ keys
+      const nuxtEnvMatches = content.matchAll(/(NUXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g);
+      for (const em of nuxtEnvMatches) {
+        if (!envVars[em[1]]) {
+          envVars[em[1]] = { value: em[2], source: 'Nuxt.js inline script' };
+        }
+      }
+      // Match camelCase config keys in __NUXT__ assignment: apiBaseUrl:"value"
+      if (content.includes('__NUXT__') || content.includes('config')) {
+        const camelMatches = content.matchAll(/([a-z][a-zA-Z0-9]*(?:[A-Z][a-zA-Z0-9]*)*)["']?\s*:\s*["']([^"']{2,})["']/g);
+        for (const cm of camelMatches) {
+          const key = cm[1];
+          const value = cm[2];
+          // Only convert keys that look like env config names (contain uppercase transitions)
+          if (/[A-Z]/.test(key) && key.length > 3 && key.length < 40) {
+            const envKey = camelToNuxtPublic(key);
+            if (!envVars[envKey]) {
+              envVars[envKey] = { value: value, source: 'Nuxt.js inline script' };
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Gatsby: Detect env vars from Gatsby apps
+  const gatsbyInternalKeys = new Set([
+    'GATSBY_ROUTER_SCROLL_STATE', 'GATSBY_INITIAL_RENDER_COMPLETE',
+    'GATSBY_NAVIGATE_TO', 'GATSBY_INITIAL_PROPS',
+  ]);
+  const isGatsbyApp = !!(window.___gatsby || window.__GATSBY || document.getElementById('___gatsby'));
+  if (isGatsbyApp) {
+    // Scan window keys for actual GATSBY_ env vars (not internal constants)
+    windowKeys.forEach(key => {
+      if (key.startsWith('GATSBY_') && !gatsbyInternalKeys.has(key) && !envVars[key]) {
+        envVars[key] = {
+          value: String(window[key]),
+          source: 'Gatsby window object'
+        };
+      }
+    });
+
+    // Check __PATH_PREFIX__ (Gatsby global)
+    if (window.__PATH_PREFIX__ !== undefined && window.__PATH_PREFIX__ !== null) {
+      if (!envVars['__PATH_PREFIX__']) {
+        envVars['__PATH_PREFIX__'] = {
+          value: String(window.__PATH_PREFIX__),
+          source: 'Gatsby __PATH_PREFIX__'
+        };
+      }
+    }
+
+    try {
+      const body = document.body;
+      if (body) {
+        const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
+        let textNode;
+        const textNodes = [];
+        while ((textNode = walker.nextNode())) {
+          const text = textNode.textContent.trim();
+          if (text && text.startsWith('GATSBY_') && /^GATSBY_[\w_]+$/.test(text)) {
+            textNodes.push({ node: textNode, key: text });
+          }
+        }
+        // For each GATSBY_ key found in the DOM, look for the next sibling or adjacent element's text as the value
+        for (const { node, key } of textNodes) {
+          if (gatsbyInternalKeys.has(key) || envVars[key]) continue;
+          const parent = node.parentElement;
+          if (!parent) continue;
+          const nextEl = parent.nextElementSibling;
+          if (nextEl) {
+            const valueText = nextEl.textContent.trim();
+            if (valueText && valueText !== 'undefined' && valueText !== 'null' && valueText !== '') {
+              envVars[key] = { value: valueText, source: 'Gatsby rendered page' };
+            }
+          }
+        }
+      }
+    } catch (e) { /* skip DOM scanning errors */ }
+  }
+
+  // Gatsby: Scan inline scripts for GATSBY_ env var patterns
+  allScriptTags.forEach(script => {
+    const content = script.textContent || '';
+    if (content.includes('GATSBY_')) {
+      // Match GATSBY_* keys with string values: GATSBY_KEY:"value" or GATSBY_KEY:'value'
+      const gatsbyEnvMatches = content.matchAll(/(GATSBY_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g);
+      for (const gm of gatsbyEnvMatches) {
+        if (!gatsbyInternalKeys.has(gm[1]) && !envVars[gm[1]]) {
+          envVars[gm[1]] = { value: gm[2], source: 'Gatsby inline script' };
+        }
+      }
+      // Match quoted keys: "GATSBY_API_URL":"value"
+      const quotedGatsbyMatches = content.matchAll(/["'](GATSBY_[\w_]+)["']\s*[,:]\s*["']([^"']+)["']/g);
+      for (const gm of quotedGatsbyMatches) {
+        if (!gatsbyInternalKeys.has(gm[1]) && !envVars[gm[1]]) {
+          envVars[gm[1]] = { value: gm[2], source: 'Gatsby inline script' };
+        }
+      }
+      // Match keys with undefined/void 0 values (env var referenced but not set at build time)
+      const undefinedGatsbyMatches = content.matchAll(/(GATSBY_[\w_]+)["']?\s*[=:]\s*(?:void 0|undefined)\b/g);
+      for (const gm of undefinedGatsbyMatches) {
+        if (!gatsbyInternalKeys.has(gm[1]) && !envVars[gm[1]]) {
+          envVars[gm[1]] = { value: '(not set at build time)', source: 'Gatsby inline script' };
+        }
+      }
+    }
+  });
 
   // Angular: Check for ng object
   if (window.ng && window.ng.probe) {
@@ -224,6 +429,7 @@ function extractEnvVars() {
 
   // Method 4: Parse inline and external script content for bundled env vars
   const scripts = document.querySelectorAll('script');
+  const isAngularPage = !!(window.ng || document.querySelector('[ng-version]') || window.getAllAngularRootElements);
 
   const processScriptContent = (content) => {
     if (!content) return;
@@ -236,7 +442,6 @@ function extractEnvVars() {
     const prefixRegex = prefixPatterns.join('|');
 
     // Pattern 1: Framework env variables with values
-    // Matches: VITE_API_URL:"https://api.example.com" or REACT_APP_API_URL:"value"
     const pattern1 = new RegExp(`(?:${prefixRegex}|NODE_ENV|PUBLIC_URL|BASE_URL)[\\w_]*\\s*:\\s*["']([^"']+)["']`, 'g');
     for (const match of content.matchAll(pattern1)) {
       const fullMatch = match[0];
@@ -254,7 +459,6 @@ function extractEnvVars() {
     }
 
     // Pattern 2: Vite's import.meta.env pattern (replaced at build time)
-    // Matches: import.meta.env.VITE_API_URL or variations after build
     const vitePattern = /(?:import\.meta\.env\.|env_)?(VITE_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
     for (const match of content.matchAll(vitePattern)) {
       const key = match[1];
@@ -268,7 +472,6 @@ function extractEnvVars() {
     }
 
     // Pattern 3: Next.js environment variable pattern
-    // Matches: process.env.NEXT_PUBLIC_API_URL replaced with string
     const nextPattern = /(NEXT_PUBLIC_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
     for (const match of content.matchAll(nextPattern)) {
       const key = match[1];
@@ -307,8 +510,35 @@ function extractEnvVars() {
       }
     }
 
+    // Pattern 5b: Gatsby pattern (filter out internal constants)
+    const gatsbyBundleInternals = ['GATSBY_ROUTER_SCROLL_STATE', 'GATSBY_INITIAL_RENDER_COMPLETE', 'GATSBY_NAVIGATE_TO', 'GATSBY_INITIAL_PROPS'];
+    const gatsbyPattern = /(GATSBY_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
+    for (const match of content.matchAll(gatsbyPattern)) {
+      const key = match[1];
+      const value = match[2];
+      if (!gatsbyBundleInternals.includes(key) && !envVars[key]) {
+        envVars[key] = { value: value, source: 'Gatsby bundle' };
+      }
+    }
+    // Quoted keys: "GATSBY_API_URL":"value"
+    const quotedGatsbyPattern = /["'](GATSBY_[\w_]+)["']\s*[,:]\s*["']([^"']+)["']/g;
+    for (const match of content.matchAll(quotedGatsbyPattern)) {
+      const key = match[1];
+      const value = match[2];
+      if (!gatsbyBundleInternals.includes(key) && !envVars[key]) {
+        envVars[key] = { value: value, source: 'Gatsby bundle' };
+      }
+    }
+    // Gatsby: detect vars replaced with void 0/undefined (not set at build time)
+    const undefinedGatsbyPattern = /(GATSBY_[\w_]+)["']?\s*[=:]\s*(?:void 0|undefined)\b/g;
+    for (const match of content.matchAll(undefinedGatsbyPattern)) {
+      const key = match[1];
+      if (!gatsbyBundleInternals.includes(key) && !envVars[key]) {
+        envVars[key] = { value: '(not set at build time)', source: 'Gatsby bundle' };
+      }
+    }
+
     // Pattern 6: Object property assignments (all frameworks)
-    // Matches: {VITE_API_URL:"value"} or {REACT_APP_KEY:"value"}
     const pattern2 = new RegExp(`\\{[\\s\\S]{0,50}((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*:\\s*["']([^"']+)["']`, 'g');
     for (const match of content.matchAll(pattern2)) {
       const key = match[1];
@@ -322,11 +552,12 @@ function extractEnvVars() {
     }
 
     // Pattern 7: Variable assignments (all frameworks)
-    // Matches: var VITE_API_URL="value" or const REACT_APP_KEY="value"
+    const internalConstantsToSkip = ['GATSBY_ROUTER_SCROLL_STATE', 'GATSBY_INITIAL_RENDER_COMPLETE', 'GATSBY_NAVIGATE_TO', 'GATSBY_INITIAL_PROPS'];
     const pattern3 = new RegExp(`(?:var|let|const)\\s+((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*=\\s*["']([^"']+)["']`, 'g');
     for (const match of content.matchAll(pattern3)) {
       const key = match[1];
       const value = match[2];
+      if (internalConstantsToSkip.includes(key)) continue;
       if (!envVars[key] || envVars[key].source === 'inline script') {
         envVars[key] = {
           value: value,
@@ -336,7 +567,6 @@ function extractEnvVars() {
     }
 
     // Pattern 8: Webpack DefinePlugin pattern (works for all frameworks)
-    // Matches: n.env.VITE_API_URL="value" or e.REACT_APP_API_URL="value"
     const pattern4 = /[a-z]\.(?:env\.)?([A-Z_][A-Z0-9_]*)\s*=\s*["']([^"']+)["']/g;
     for (const match of content.matchAll(pattern4)) {
       const key = match[1];
@@ -353,7 +583,6 @@ function extractEnvVars() {
     }
 
     // Pattern 9: String literal replacements in minified code
-    // Look for quoted env var names followed by values
     const pattern5 = new RegExp(`["']((?:${prefixRegex})[\\w_]+)["']\\s*[,:]\\s*["']([^"']+)["']`, 'g');
     for (const match of content.matchAll(pattern5)) {
       const key = match[1];
@@ -367,7 +596,6 @@ function extractEnvVars() {
     }
 
     // Pattern 10: Direct NODE_ENV detection - STRICT matching only
-    // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
     const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
     if (nodeEnvMatch && !envVars.NODE_ENV) {
       envVars.NODE_ENV = {
@@ -386,72 +614,74 @@ function extractEnvVars() {
     }
 
     // Pattern 12: Angular environment object detection
-    const angularEnvProps = [
-      'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
-      'environmentName', 'environment', 'appVersion', 'version',
-      'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
-      'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
-      'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
-      'debugMode', 'enableLogging', 'logLevel'
-    ];
+    if (isAngularPage) {
+      const angularEnvProps = [
+        'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
+        'environmentName', 'environment', 'appVersion', 'version',
+        'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
+        'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
+        'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
+        'debugMode', 'enableLogging', 'logLevel'
+      ];
 
-    angularEnvProps.forEach(prop => {
-      const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
-      const angularMatch1 = content.match(angularPattern1);
-      if (angularMatch1 && !envVars[prop]) {
-        const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
-        if (valueMatch) {
-          envVars[prop] = {
-            value: valueMatch[1],
-            source: 'Angular bundle'
-          };
-        }
-      }
-
-      const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
-      const angularMatch2 = content.match(angularPattern2);
-      if (angularMatch2 && !envVars[prop]) {
-        const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
-        if (valueMatch) {
-          let boolValue = valueMatch[1];
-          if (boolValue === '!0' || boolValue === 'true') boolValue = 'true';
-          if (boolValue === '!1' || boolValue === 'false') boolValue = 'false';
-          envVars[prop] = {
-            value: boolValue,
-            source: 'Angular bundle'
-          };
-        }
-      }
-
-      const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
-      const angularMatch3 = content.match(angularPattern3);
-      if (angularMatch3 && !envVars[prop]) {
-        const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
-        if (valueMatch) {
-          envVars[prop] = {
-            value: valueMatch[1],
-            source: 'Angular bundle'
-          };
-        }
-      }
-    });
-
-    const envVarsObjectMatch = content.match(/envVars\s*=\s*\{([^}]{0,500})\}/);
-    if (envVarsObjectMatch) {
-      const objContent = envVarsObjectMatch[1];
       angularEnvProps.forEach(prop => {
-        const propPattern = new RegExp(`${prop}\\s*:\\s*(?:["']([^"']+)["']|(!0|!1|true|false)|(\\d+))`, 'i');
-        const propMatch = objContent.match(propPattern);
-        if (propMatch && !envVars[prop]) {
-          let value = propMatch[1] || propMatch[2] || propMatch[3];
-          if (value === '!0' || value === 'true') value = 'true';
-          if (value === '!1' || value === 'false') value = 'false';
-          envVars[prop] = {
-            value: value,
-            source: 'Angular component envVars'
-          };
+        const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
+        const angularMatch1 = content.match(angularPattern1);
+        if (angularMatch1 && !envVars[prop]) {
+          const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
+          if (valueMatch) {
+            envVars[prop] = {
+              value: valueMatch[1],
+              source: 'Angular bundle'
+            };
+          }
+        }
+
+        const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
+        const angularMatch2 = content.match(angularPattern2);
+        if (angularMatch2 && !envVars[prop]) {
+          const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
+          if (valueMatch) {
+            let boolValue = valueMatch[1];
+            if (boolValue === '!0' || boolValue === 'true') boolValue = 'true';
+            if (boolValue === '!1' || boolValue === 'false') boolValue = 'false';
+            envVars[prop] = {
+              value: boolValue,
+              source: 'Angular bundle'
+            };
+          }
+        }
+
+        const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
+        const angularMatch3 = content.match(angularPattern3);
+        if (angularMatch3 && !envVars[prop]) {
+          const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
+          if (valueMatch) {
+            envVars[prop] = {
+              value: valueMatch[1],
+              source: 'Angular bundle'
+            };
+          }
         }
       });
+
+      const envVarsObjectMatch = content.match(/envVars\s*=\s*\{([^}]{0,500})\}/);
+      if (envVarsObjectMatch) {
+        const objContent = envVarsObjectMatch[1];
+        angularEnvProps.forEach(prop => {
+          const propPattern = new RegExp(`${prop}\\s*:\\s*(?:["']([^"']+)["']|(!0|!1|true|false)|(\\d+))`, 'i');
+          const propMatch = objContent.match(propPattern);
+          if (propMatch && !envVars[prop]) {
+            let value = propMatch[1] || propMatch[2] || propMatch[3];
+            if (value === '!0' || value === 'true') value = 'true';
+            if (value === '!1' || value === 'false') value = 'false';
+            envVars[prop] = {
+              value: value,
+              source: 'Angular component envVars'
+            };
+          }
+        });
+      }
     }
 
     // Old patterns for explicit assignments (kept for compatibility)
@@ -705,6 +935,60 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+function processSourceMapForNextEnv(compiledCode, sourceMapJson, source) {
+  const envVars = {};
+  if (!sourceMapJson || !sourceMapJson.sourcesContent) return envVars;
+
+  for (const origSrc of sourceMapJson.sourcesContent) {
+    if (!origSrc || !origSrc.includes('NEXT_PUBLIC_')) continue;
+
+    // Label pattern: 'Label': process.env.NEXT_PUBLIC_X
+    const labelPat = /['"]([^'"]+)['"]\s*:\s*process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(labelPat)) {
+      const label = ref[1];
+      const envName = ref[2];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try {
+        const pat = new RegExp("['\"]" + escapedLabel + "['\"]\\s*:\\s*['\"]([^'\"]{1,500})['\"]");
+        const m = compiledCode.match(pat);
+        if (m && m[1]) {
+          envVars[envName] = { value: m[1], source: source + ' (Next.js source map)' };
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // Context matching: use surrounding text to find replacement values
+    const contextPat = /(.{0,60})process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(contextPat)) {
+      const envName = ref[2];
+      if (envVars[envName] && envVars[envName].value !== '(detected in source)' && envVars[envName].value !== '(referenced)') continue;
+      const before = ref[1].replace(/\s+$/, '');
+      const anchor = before.slice(-25);
+      if (anchor.length >= 3) {
+        const escapedAnchor = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        try {
+          const pat = new RegExp(escapedAnchor + '\\s*["\']([^"\']{1,500})["\']');
+          const m = compiledCode.match(pat);
+          if (m && m[1]) {
+            envVars[envName] = { value: m[1], source: source + ' (Next.js source map)' };
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    // Register remaining as detected
+    const anyPat = /process\.env\.(NEXT_PUBLIC_[\w_]+)/g;
+    for (const ref of origSrc.matchAll(anyPat)) {
+      if (!envVars[ref[1]]) {
+        envVars[ref[1]] = { value: '(detected in source)', source: source + ' (Next.js source map)' };
+      }
+    }
+  }
+
+  return envVars;
+}
+
 async function loadEnvironmentVariables() {
   showLoading();
 
@@ -802,15 +1086,26 @@ async function loadEnvironmentVariables() {
           });
         }
 
+        // Gatsby: Discover page-data.json for current page
+        if (window.___gatsby || window.__GATSBY || document.getElementById('___gatsby')) {
+          try {
+            // Gatsby stores page data at /page-data/<path>/page-data.json
+            const pagePath = window.location.pathname === '/' ? 'index' : window.location.pathname.replace(/^\/|\/$/g, '');
+            urls.add(baseUrl + '/page-data/' + pagePath + '/page-data.json');
+            urls.add(baseUrl + '/page-data/app-data.json');
+          } catch (e) { /* skip */ }
+        }
+
         return Array.from(urls);
       }
     });
 
     const scriptUrls = scriptUrlsResult[0]?.result || [];
 
-    // Detect if this is a Next.js app (needs more chunks scanned)
+    // Detect if this is a Next.js or Gatsby app (may need more chunks scanned)
     const isNextJs = scriptUrls.some(url => url.includes('/_next/'));
-    const scriptLimit = isNextJs ? 50 : 20;
+    const isGatsby = scriptUrls.some(url => url.includes('/page-data/') || url.includes('gatsby'));
+    const scriptLimit = (isNextJs || isGatsby) ? 50 : 20;
 
     // Fetch and parse external scripts in parallel batches for better performance
     const urlsToFetch = scriptUrls.slice(0, scriptLimit);
@@ -919,9 +1214,6 @@ function parseScriptForEnvVars(content, source) {
   const originalContent = content;
 
   // Pre-process: Extract and unescape eval() strings so patterns can match their contents.
-  // In Next.js/webpack dev mode, compiled code is wrapped in:
-  //   eval("...escaped code...") OR eval(__webpack_require__.ts("...escaped code..."))
-  // where quotes are escaped as \" and newlines as \n, preventing regex patterns from matching.
   if (content.includes('eval(')) {
     let extraContent = '';
     let searchPos = 0;
@@ -1032,6 +1324,38 @@ function parseScriptForEnvVars(content, source) {
     }
   }
 
+  // Pattern 5b: Gatsby pattern
+  const gatsbyInternalKeys = new Set([
+    'GATSBY_ROUTER_SCROLL_STATE', 'GATSBY_INITIAL_RENDER_COMPLETE',
+    'GATSBY_NAVIGATE_TO', 'GATSBY_INITIAL_PROPS',
+  ]);
+  // In compiled output: GATSBY_API_URL:"value" or "GATSBY_API_URL":"value"
+  const gatsbyPattern = /(GATSBY_[\w_]+)["']?\s*[=:]\s*["']([^"']+)["']/g;
+  for (const match of content.matchAll(gatsbyPattern)) {
+    const key = match[1];
+    const value = match[2];
+    if (!gatsbyInternalKeys.has(key) && !envVars[key]) {
+      envVars[key] = { value, source: source + ' (Gatsby)' };
+    }
+  }
+  // Also match quoted keys: "GATSBY_API_URL":"value"
+  const quotedGatsbyPattern = /["'](GATSBY_[\w_]+)["']\s*[,:]\s*["']([^"']+)["']/g;
+  for (const match of content.matchAll(quotedGatsbyPattern)) {
+    const key = match[1];
+    const value = match[2];
+    if (!gatsbyInternalKeys.has(key) && !envVars[key]) {
+      envVars[key] = { value, source: source + ' (Gatsby)' };
+    }
+  }
+  // Gatsby: detect env vars replaced with void 0/undefined (not set at build time)
+  const undefinedGatsbyPattern = /(GATSBY_[\w_]+)["']?\s*[=:]\s*(?:void 0|undefined)\b/g;
+  for (const match of content.matchAll(undefinedGatsbyPattern)) {
+    const key = match[1];
+    if (!gatsbyInternalKeys.has(key) && !envVars[key]) {
+      envVars[key] = { value: '(not set at build time)', source: source + ' (Gatsby)' };
+    }
+  }
+
   // Pattern 6: Object property assignments (all frameworks)
   const pattern2 = new RegExp(`\\{[\\s\\S]{0,50}((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*:\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern2)) {
@@ -1043,10 +1367,15 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 7: Variable assignments (all frameworks)
+  const internalConstantsToSkip = new Set([
+    'GATSBY_ROUTER_SCROLL_STATE', 'GATSBY_INITIAL_RENDER_COMPLETE',
+    'GATSBY_NAVIGATE_TO', 'GATSBY_INITIAL_PROPS',
+  ]);
   const pattern3 = new RegExp(`(?:var|let|const)\\s+((?:${prefixRegex}|NODE_ENV|PUBLIC_URL)[\\w_]*)\\s*=\\s*["']([^"']+)["']`, 'g');
   for (const match of content.matchAll(pattern3)) {
     const key = match[1];
     const value = match[2];
+    if (internalConstantsToSkip.has(key)) continue;
     if (!envVars[key]) {
       envVars[key] = { value, source };
     }
@@ -1076,7 +1405,6 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 10: Direct NODE_ENV detection - STRICT matching only
-  // Only match if it's explicitly assigned to NODE_ENV or process.env.NODE_ENV
   const nodeEnvMatch = content.match(/NODE_ENV[\"']?\s*[=:]\s*[\"'](production|development|test)["']/);
   if (nodeEnvMatch && !envVars.NODE_ENV) {
     envVars.NODE_ENV = { value: nodeEnvMatch[1], source: source + ' (detected)' };
@@ -1089,7 +1417,6 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 12: Vite's inline import.meta.env object definition
-  // Matches: import.meta.env = {"VITE_API_URL": "https://api.example.com", ...}
   const viteEnvObjMatch = content.match(/import\.meta\.env\s*=\s*(\{[^}]+\})/);
   if (viteEnvObjMatch) {
     try {
@@ -1109,8 +1436,6 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 13: React/Vite friendly name patterns in arrays or objects
-  // Matches: [{key:"API Base URL",value:"https://..."}, ...] OR {"API URL":"https://..."}
-  // Look for key-value object patterns (works for both inline and const declarations)
   const keyValueObjPattern = /\{[^{}]{0,200}key\s*:\s*["']([^"']+)["'][^{}]{0,200}value\s*:\s*["']([^"']+)["'][^{}]{0,200}\}/g;
   for (const match of content.matchAll(keyValueObjPattern)) {
     const friendlyName = match[1];
@@ -1155,15 +1480,14 @@ function parseScriptForEnvVars(content, source) {
         'CDN URL': 'NEXT_PUBLIC_CDN_URL',
       };
 
-      const envKey = envKeyMap[friendlyName] || `DETECTED_${friendlyName.toUpperCase().replace(/\s+/g, '_')}`;
-      if (!envVars[envKey]) {
+      const envKey = envKeyMap[friendlyName];
+      if (envKey && !envVars[envKey]) {
         envVars[envKey] = { value, source: source + ' (key-value pair)' };
       }
     }
   }
 
   // Pattern 14: Minified object literal with API URLs and keys
-  // Matches patterns like: n={"API URL":"https://api.example.com",Analytics:"true"...}
   const minifiedObjPattern = /[a-z]\s*=\s*\{([^}]{50,1000})\}/g;
   for (const match of content.matchAll(minifiedObjPattern)) {
     const objContent = match[1];
@@ -1250,7 +1574,6 @@ function parseScriptForEnvVars(content, source) {
       }
     }
 
-    // If we found multiple env-like pairs in one object, it's likely an env config
     if (envLikeCount >= 2) {
       for (const pair of foundPairs) {
         // Try to map to standard env var names
@@ -1274,16 +1597,22 @@ function parseScriptForEnvVars(content, source) {
           'CDN URL': 'NEXT_PUBLIC_CDN_URL',
         };
 
-        const envKey = envKeyMap[pair.key] || pair.key;
-        if (!envVars[envKey]) {
+        // Only add if the key is in the map OR has a known framework prefix
+        const envKey = envKeyMap[pair.key];
+        if (envKey && !envVars[envKey]) {
           envVars[envKey] = { value: pair.value, source: source + ' (minified object)' };
+        } else if (!envKey) {
+          const hasPrefix = ['REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_',
+            'NUXT_PUBLIC_', 'GATSBY_', 'ANGULAR_', 'SVELTE_', 'PUBLIC_'].some(p => pair.key.startsWith(p));
+          if (hasPrefix && !envVars[pair.key]) {
+            envVars[pair.key] = { value: pair.value, source: source + ' (minified object)' };
+          }
         }
       }
     }
   }
 
   // Pattern 15: name-value pairs (used in security/credential displays)
-  // Matches: {name:"AWS_ACCESS_KEY_ID",value:"AKIAIOSFODNN7EXAMPLE"...}
   const nameValuePattern = /\{[^}]*name\s*:\s*["']([^"']+)["'][^}]*value\s*:\s*["']([^"']+)["'][^}]*\}/g;
   for (const match of content.matchAll(nameValuePattern)) {
     const name = match[1];
@@ -1314,9 +1643,17 @@ function parseScriptForEnvVars(content, source) {
       'TWILIO_AUTH_TOKEN': 'VITE_TWILIO_AUTH_TOKEN',
     };
 
-    const envKey = credentialMap[name] || name;
-    if (!envVars[envKey]) {
+    // Only add if the name is a known credential OR has a framework prefix
+    const envKey = credentialMap[name];
+    if (envKey && !envVars[envKey]) {
       envVars[envKey] = { value, source: source + ' (name-value pair)' };
+    } else if (!envKey) {
+      // Check if name has a known framework prefix before adding
+      const hasFrameworkPrefix = ['REACT_APP_', 'VITE_', 'VUE_APP_', 'NEXT_PUBLIC_',
+        'NUXT_PUBLIC_', 'GATSBY_', 'ANGULAR_', 'SVELTE_', 'PUBLIC_'].some(p => name.startsWith(p));
+      if (hasFrameworkPrefix && !envVars[name]) {
+        envVars[name] = { value, source: source + ' (name-value pair)' };
+      }
     }
   }
 
@@ -1428,7 +1765,6 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 15d: Next.js turbopack module format
-  // Turbopack uses a different module wrapper: [id, {...}, function(module, exports, require) { ... }]
   const turbopackEnvPattern = /\["NEXT_PUBLIC_([\w_]+)"\]\s*[=:]\s*["']([^"']+)["']/g;
   for (const match of content.matchAll(turbopackEnvPattern)) {
     const key = 'NEXT_PUBLIC_' + match[1];
@@ -1439,7 +1775,6 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Pattern 15e: Next.js edge runtime / middleware env pattern
-  // Matches: env:{"NEXT_PUBLIC_X":"value"} or "env":{...}
   const nextEnvObjPattern = /["']?env["']?\s*:\s*\{([^}]*NEXT_PUBLIC_[^}]+)\}/g;
   for (const match of content.matchAll(nextEnvObjPattern)) {
     const objContent = match[1];
@@ -1466,7 +1801,6 @@ function parseScriptForEnvVars(content, source) {
   let secretKeyCount = 0;
   for (const match of content.matchAll(secretKeyPattern)) {
     const secret = match[1];
-    // Only flag if it looks like a secret key (has mix of upper/lower/special chars)
     if (secret.match(/[A-Z]/) && secret.match(/[a-z]/) && secret.match(/[/+=]/)) {
       const detectedKey = `SECRET_KEY${secretKeyCount > 0 ? '_' + secretKeyCount : ''}`;
       envVars[detectedKey] = { value: secret, source: source + ' (potential secret key)' };
@@ -1479,7 +1813,6 @@ function parseScriptForEnvVars(content, source) {
   let uuidCount = 0;
   for (const match of content.matchAll(uuidPattern)) {
     const uuid = match[1];
-    // Only include first few UUIDs to avoid noise
     if (uuidCount < 3) {
       const detectedKey = `UUID_TOKEN${uuidCount > 0 ? '_' + uuidCount : ''}`;
       envVars[detectedKey] = { value: uuid, source: source + ' (UUID token)' };
@@ -1514,7 +1847,6 @@ function parseScriptForEnvVars(content, source) {
   let apiKeyCount = 0;
   for (const match of content.matchAll(genericApiKeyPattern)) {
     const key = match[1];
-    // Only flag if it looks random (has good mix of chars) and isn't a hash
     const hasUpperAndLower = key.match(/[A-Z]/) && key.match(/[a-z]/);
     const hasNumbers = key.match(/[0-9]/);
     const notTooManyRepeats = !key.match(/(.)\1{5,}/); // Not like "aaaaaa"
@@ -1527,57 +1859,61 @@ function parseScriptForEnvVars(content, source) {
   }
 
   // Angular environment object detection
-  const angularEnvProps = [
-    'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
-    'environmentName', 'environment', 'appVersion', 'version',
-    'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
-    'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
-    'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
-    'debugMode', 'enableLogging', 'logLevel'
-  ];
+  const isAngularScript = content.includes('@angular') || content.includes('ng-version') ||
+    content.includes('ngModule') || content.includes('NgModule') || content.includes('angular.min');
+  if (isAngularScript) {
+    const angularEnvProps = [
+      'production', 'apiUrl', 'apiKey', 'apiEndpoint', 'baseUrl', 'baseURL',
+      'environmentName', 'environment', 'appVersion', 'version',
+      'stripePublicKey', 'stripeKey', 'googleAnalyticsId', 'analyticsId',
+      'sentryDsn', 'sentryUrl', 'firebaseConfig', 'awsConfig',
+      'maxUploadSize', 'uploadLimit', 'featureFlags', 'features',
+      'debugMode', 'enableLogging', 'logLevel'
+    ];
 
-  angularEnvProps.forEach(prop => {
-    const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
-    const angularMatch1 = content.match(angularPattern1);
-    if (angularMatch1 && !envVars[prop]) {
-      const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
-      if (valueMatch) {
-        envVars[prop] = {
-          value: valueMatch[1],
-          source: source + ' (Angular)'
-        };
+    angularEnvProps.forEach(prop => {
+      const angularPattern1 = new RegExp(`\\b${prop}\\s*:\\s*["']([^"']+)["']`, 'gi');
+      const angularMatch1 = content.match(angularPattern1);
+      if (angularMatch1 && !envVars[prop]) {
+        const valueMatch = angularMatch1[0].match(/["']([^"']+)["']/);
+        if (valueMatch) {
+          envVars[prop] = {
+            value: valueMatch[1],
+            source: source + ' (Angular)'
+          };
+        }
       }
-    }
 
-    // Pattern for boolean values: production:!0 or production:true
-    const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
-    const angularMatch2 = content.match(angularPattern2);
-    if (angularMatch2 && !envVars[prop]) {
-      const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
-      if (valueMatch) {
-        let boolValue = valueMatch[1];
-        if (boolValue === '!0' || boolValue.toLowerCase() === 'true') boolValue = 'true';
-        if (boolValue === '!1' || boolValue.toLowerCase() === 'false') boolValue = 'false';
-        envVars[prop] = {
-          value: boolValue,
-          source: source + ' (Angular)'
-        };
+      // Pattern for boolean values: production:!0 or production:true
+      const angularPattern2 = new RegExp(`\\b${prop}\\s*:\\s*(!0|!1|true|false)\\b`, 'gi');
+      const angularMatch2 = content.match(angularPattern2);
+      if (angularMatch2 && !envVars[prop]) {
+        const valueMatch = angularMatch2[0].match(/:\s*(!0|!1|true|false)/i);
+        if (valueMatch) {
+          let boolValue = valueMatch[1];
+          if (boolValue === '!0' || boolValue.toLowerCase() === 'true') boolValue = 'true';
+          if (boolValue === '!1' || boolValue.toLowerCase() === 'false') boolValue = 'false';
+          envVars[prop] = {
+            value: boolValue,
+            source: source + ' (Angular)'
+          };
+        }
       }
-    }
 
-    // Pattern for numeric values: maxUploadSize:41943040
-    const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
-    const angularMatch3 = content.match(angularPattern3);
-    if (angularMatch3 && !envVars[prop]) {
-      const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
-      if (valueMatch) {
-        envVars[prop] = {
-          value: valueMatch[1],
-          source: source + ' (Angular)'
-        };
+      // Pattern for numeric values: maxUploadSize:41943040
+      const angularPattern3 = new RegExp(`\\b${prop}\\s*:\\s*(\\d+)\\b`, 'gi');
+      const angularMatch3 = content.match(angularPattern3);
+      if (angularMatch3 && !envVars[prop]) {
+        const valueMatch = angularMatch3[0].match(/:\s*(\d+)/);
+        if (valueMatch) {
+          envVars[prop] = {
+            value: valueMatch[1],
+            source: source + ' (Angular)'
+          };
+        }
       }
-    }
-  });
+    });
+  }
 
   return envVars;
 }
@@ -1589,8 +1925,8 @@ function includeByFramework(key, framework) {
     case 'vite': return key.startsWith('VITE_') || key === 'MODE';
     case 'next': return key.startsWith('NEXT_PUBLIC_');
     case 'vue': return key.startsWith('VUE_APP_');
-    case 'nuxt': return key.startsWith('NUXT_PUBLIC_');
-    case 'gatsby': return key.startsWith('GATSBY_');
+    case 'nuxt': return key.startsWith('NUXT_PUBLIC_') || key.startsWith('NUXT_APP_');
+    case 'gatsby': return key.startsWith('GATSBY_') || key === '__PATH_PREFIX__';
     default: return true;
   }
 }

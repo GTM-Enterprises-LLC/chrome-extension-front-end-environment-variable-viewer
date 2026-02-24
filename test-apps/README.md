@@ -22,7 +22,7 @@ npm run test:e2e
 ```
 
 **What it tests:**
-- All 8 test applications load successfully (React, Vite, Next.js, Vue, Svelte, Angular, Multicloud, Payment)
+- All 10 test applications load successfully (React, Vite, Next.js, Vue, Svelte, Angular, Nuxt.js, Gatsby, Multicloud, Payment)
 - JavaScript files are accessible
 - HTTP 200 responses
 - Extension can be loaded with each app
@@ -57,6 +57,8 @@ npm run dev  # or npm run build && npm run preview
 | React Demo | 3001 | 3002 |
 | Vite Demo | 5173 | 4173 |
 | Next.js Demo | 3003 | 3004 |
+| Nuxt.js Demo | 3005 | 3006 |
+| Gatsby Demo | 8000 | 9000 |
 | Multicloud Demo | 5174 | 5184 |
 | Payment APIs Demo | 5175 | 5185 |
 
@@ -75,6 +77,8 @@ For each app, verify:
 1. **react-demo** - Create React App with `REACT_APP_*` variables
 2. **vite-demo** - Vite + React with `VITE_*` variables
 3. **nextjs-demo** - Next.js with `NEXT_PUBLIC_*` variables
+4. **nuxtjs-demo** - Nuxt.js 3 with `NUXT_PUBLIC_*` variables
+5. **gatsby-demo** - Gatsby 5 with `GATSBY_*` variables
 
 ### Dangerous Keys Demos
 4. **multicloud-demo** - Mock cloud provider credentials (AWS, Azure, GCP)
