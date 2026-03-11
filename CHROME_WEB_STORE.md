@@ -94,10 +94,17 @@ Clean, modern interface with:
 - Export to JSON or .env format for reports
 - Responsive design that fits your workflow
 
-### 🔄 Recent Updates (v3.5.0)
+### 🔄 Recent Updates (v3.6.0)
 
-**New in v3.5.0:**
-- Minor stability improvements and bug fixes
+**New in v3.6.0:**
+- Bug fix: Improved Next.js source map processing reliability
+- UI polish: Updated combobox styling for better consistency
+- Documentation updates for Chrome Web Store release
+
+**v3.5.0:**
+- 🌿 Nuxt.js support: `NUXT_PUBLIC_*` variables and `__NUXT__` runtime config
+- 🟣 Gatsby support: `GATSBY_*` environment variables
+- Added demo apps for Nuxt.js and Gatsby (Docker-ready)
 
 **v3.4.0:**
 - 📑 Tab-based navigation (Variables tab + Script Search tab)
@@ -211,7 +218,7 @@ https://gtmenterprisesllc.com/support
 (Alternative: https://github.com/GTM-Enterprises-LLC/chrome-extension-front-end-environment-variable-viewer/issues)
 
 ## Version
-3.5.0
+3.6.0
 
 ## Permissions Justification
 
@@ -354,7 +361,7 @@ Regular updates to support new frameworks and improve detection patterns. See CH
 ### Chrome Web Store Assets
 - [ ] All screenshots captured and edited (8 screenshots showing v3.4.0 features)
 - [ ] Store icon uploaded (128x128)
-- [ ] Version number matches manifest.json (3.5.0)
+- [ ] Version number matches manifest.json (3.6.0)
 - [ ] Description reviewed for typos
 - [ ] Keywords optimized for search
 - [ ] Permissions justifications clear and accurate
@@ -409,7 +416,7 @@ EnvVars is open source! We welcome contributions from the community. Visit our G
 
 ---
 
-**Last Updated**: 2026-02-19
-**Version**: 3.5.0
+**Last Updated**: 2026-03-11
+**Version**: 3.6.0
 **Developer**: GTM Enterprises LLC
 **Website**: https://gtmenterprisesllc.com

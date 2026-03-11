@@ -2,6 +2,49 @@
 
 All notable changes to the EnvVars Chrome Extension will be documented in this file.
 
+## [3.6.0] - 2026-03-11
+
+### 🐛 Bug Fixes
+
+**Next.js Source Map Processing:**
+- Fixed `processSourceMapForNextEnv` to correctly handle edge cases in source map parsing
+- Improved stability when processing Next.js production bundles with complex source maps
+
+### 🎨 UI/UX Improvements
+
+**Combobox Style:**
+- Updated combobox/select element styling for better visual consistency
+- Improved accessibility and appearance of framework filter dropdowns
+
+### 📚 Documentation
+
+**Release Preparation:**
+- Updated all documentation for Chrome Web Store submission
+- Added CLAUDE.md with project information for AI-assisted development
+- Synchronized version numbers across manifest.json and package.json
+
+## [3.5.0] - 2026-02-24
+
+### 🎉 New Framework Support
+
+**Nuxt.js Support:**
+- Detects `NUXT_PUBLIC_*` variables from Nuxt 3 runtime config
+- Parses `__NUXT__` object injected into the page by the Nuxt SSR/SSG runtime
+- Added Nuxt.js demo application with full Docker support
+- Dev server: http://localhost:3005, Production: http://localhost:3006
+
+**Gatsby Support:**
+- Detects `GATSBY_*` prefixed environment variables
+- Supports Gatsby's browser-side environment variable exposure
+- Added Gatsby demo application with full Docker support
+- Dev server: http://localhost:8000, Production: http://localhost:9000
+
+### 📚 Documentation
+
+- Updated manifest.json description to reflect support for Nuxt.js and Gatsby
+- Added demo configurations for Nuxt.js and Gatsby in docker-compose.yml
+- Updated README to list all 10+ supported frameworks
+
 ## [3.4.0] - 2026-01-13
 
 ### 🎨 UI/UX Improvements
