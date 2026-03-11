@@ -1,6 +1,6 @@
 {
   "name": "envvars-chrome-extension",
-  "version": "3.4.0",
+  "version": "3.6.0",
   "description": "Chrome extension to detect environment variables and hardcoded secrets in React, Vue, Angular, Svelte, Next.js, and other frontend frameworks",
   "repository": {
     "type": "git",

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EnvVars",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Detect exposed environment variables and hardcoded secrets in React, Vue, Angular, Svelte, Next.js, Nuxt.js, Gatsby, and other frontend frameworks.",
   "permissions": [
     "activeTab",

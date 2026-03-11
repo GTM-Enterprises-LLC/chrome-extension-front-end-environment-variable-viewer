@@ -62,6 +62,8 @@ These are minified production builds that best represent real-world usage:
 | **Vue 3** | http://localhost:8081 | 10 vars (VITE_*) |
 | **Svelte** | http://localhost:8082 | 10 vars (VITE_*) |
 | **Angular** | http://localhost:8083 | 8 vars (environment object) |
+| **Nuxt.js** | http://localhost:3006 | 8 vars (NUXT_PUBLIC_*) |
+| **Gatsby** | http://localhost:9000 | 8 vars (GATSBY_*) |
 
 ### Security Test Demos (Hardcoded Secrets)
 
@@ -82,6 +84,8 @@ These are unminified development builds with hot-reload:
 | **Vue 3 Dev** | http://localhost:5176 |
 | **Svelte Dev** | http://localhost:5177 |
 | **Angular Dev** | http://localhost:4200 |
+| **Nuxt.js Dev** | http://localhost:3005 |
+| **Gatsby Dev** | http://localhost:8000 |
 | **Multicloud Dev** | http://localhost:5174 |
 | **Payment APIs Dev** | http://localhost:5175 |
 
@@ -171,6 +175,30 @@ Test the extension on each production URL and verify:
 - [ ] sentryDsn detected
 - [ ] Total: 9 variables (environment object properties)
 - [ ] Variables show actual values from environment.ts
+
+### Nuxt.js Demo (http://localhost:3006) ⭐ NEW in v3.5.0
+- [ ] NUXT_PUBLIC_API_BASE_URL detected
+- [ ] NUXT_PUBLIC_GOOGLE_ANALYTICS_ID detected
+- [ ] NUXT_PUBLIC_STRIPE_KEY detected
+- [ ] NUXT_PUBLIC_APP_NAME detected
+- [ ] NUXT_PUBLIC_ENABLE_DARK_MODE detected
+- [ ] NUXT_PUBLIC_CDN_URL detected
+- [ ] NUXT_PUBLIC_SENTRY_DSN detected
+- [ ] NUXT_PUBLIC_MAX_UPLOAD_SIZE detected
+- [ ] Total: 8 variables (NUXT_PUBLIC_*)
+- [ ] Filter by "Nuxt" works
+
+### Gatsby Demo (http://localhost:9000) ⭐ NEW in v3.5.0
+- [ ] GATSBY_API_URL detected
+- [ ] GATSBY_GOOGLE_ANALYTICS_ID detected
+- [ ] GATSBY_STRIPE_PUBLIC_KEY detected
+- [ ] GATSBY_APP_TITLE detected
+- [ ] GATSBY_ENABLE_ANALYTICS detected
+- [ ] GATSBY_CDN_URL detected
+- [ ] GATSBY_SENTRY_DSN detected
+- [ ] GATSBY_MAX_UPLOAD_SIZE detected
+- [ ] Total: 8 variables (GATSBY_*)
+- [ ] Filter by "Gatsby" works
 
 ### Multicloud Demo (http://localhost:5184) 🔐 SECRETS
 - [ ] VITE_AWS_ACCESS_KEY_ID detected

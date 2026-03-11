@@ -16,7 +16,7 @@ Automatically identifies hardcoded credentials and sensitive data:
 Visual warning banner alerts you when secrets are detected, with dedicated 🔐 Secrets filter for quick security audits.
 
 ### 🎯 Multi-Framework Support
-Detects environment variables from **8+ frameworks**:
+Detects environment variables from **10+ frameworks**:
 - **React** (Create React App) - `REACT_APP_*`
 - **Vue 3** - `VITE_*` variables
 - **Svelte** - `VITE_*` variables
@@ -27,7 +27,7 @@ Detects environment variables from **8+ frameworks**:
 - **Gatsby** - `GATSBY_*`
 - **Generic** - `PUBLIC_*`, `NODE_ENV`, `BASE_URL`
 
-### 📋 Modern UI (v3.2-v3.4)
+### 📋 Modern UI (v3.2-v3.6)
 - **Tab-Based Navigation** (v3.4): Separate tabs for Variables and Script Search
 - **Individual Copy Buttons** (v3.3): One-click copy for each variable value
 - **Script Search** (v3.2): Search text across all page scripts with line numbers
@@ -197,6 +197,8 @@ Test URLs:
 - Vue: http://localhost:8081
 - Svelte: http://localhost:8082
 - Angular: http://localhost:8083
+- Nuxt.js: http://localhost:3006
+- Gatsby: http://localhost:9000
 - Multicloud (secrets): http://localhost:5184
 - Payment APIs (secrets): http://localhost:5185
 
@@ -265,7 +267,7 @@ If you're not seeing any variables:
 
 ```
 chrome-extension-front-end-environment-variable-viewer/
-├── manifest.json              # Extension configuration (v3.4.0)
+├── manifest.json              # Extension configuration (v3.6.0)
 ├── popup.html                 # Extension popup UI
 ├── popup.css                  # Popup styling
 ├── popup.js                   # Main detection logic (21 patterns)
@@ -311,6 +313,16 @@ Contributions are welcome! Please:
 MIT License - Feel free to use and modify as needed.
 
 ## 📊 Version History
+
+### v3.6.0 (2026-03-11) - Release Prep & Bug Fixes
+- **Next.js Fix**: Improved source map processing reliability
+- **UI Polish**: Updated combobox styling for better consistency
+- **Documentation**: Updated all docs for Chrome Web Store submission
+
+### v3.5.0 (2026-02-24) - Nuxt.js & Gatsby Support
+- **Nuxt.js Support**: `NUXT_PUBLIC_*` variables and `__NUXT__` runtime config
+- **Gatsby Support**: `GATSBY_*` environment variables
+- **Demo Apps**: Docker-ready Nuxt.js and Gatsby demo applications
 
 ### v3.4.0 (2026-01-13) - Tab Navigation & UI Polish
 - **Tab-Based Navigation**: Separate tabs for Variables and Script Search
